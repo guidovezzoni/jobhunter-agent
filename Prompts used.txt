@@ -1,0 +1,36 @@
+Version: JH4
+==============================
+
+I would like to build a 'Job Hunter Agent' in Python, that searches the web and API and filters results according to specific criteria.
+
+The important job info are:
+    - role
+    - location
+
+The general workflow is:
+- Take user preferences: the following values should be requested to the user on launch, providing the default suggested.
+    - Role (default is "Android Developer")
+    - Location (default is empty, which means any location)
+- Search via job boards / company sites via web search APIs or scraping endpoints. Use these criteria:
+    - If a RAPID_API_KEY is available in .env use the JSearch API (RapidAPI), if the KEY is not available use the mocked response in `docs/RapidAPIResponse.txt` if present, if said file is not present warn the user and exit
+    - Please note that mock file might be a Python-style (single quotes), not strict JSON
+    - Tailor the request according to the API available parameters and the criteria defined in the important job info: if the API provides a role search parameter then use it, same for location
+- Save the API response in debug/api-response using a timestamp based filename down to the seconds, to avoid overridings.
+- Extract key job info
+    - location type = on-site/hybrid/remote or not defined. This could be stated explicitly or should be extrapolated from the job spec.
+    - position type = permanent position, contract, freelance or not defined.
+    - minimum salary - if provided
+    - industry - if available
+    - job spec language - this should be understood from the job ad: if the job ad is Spanish and they require English knowledge, the result of this field will still be Spanish
+    - tech stack - this should be extracted from the job ad if present
+    - requirements for the job
+    - job link
+- Generate a tailored summary with the key job info and other info you deem important
+
+Additional requirements:
+- Please add a readme.md and an agents.md and keep them updated with adding additional changes?
+
+Please define the above workflow in plain language
+
+---
+
