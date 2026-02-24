@@ -23,7 +23,7 @@ def main() -> None:
     print(f"Searching: role='{prefs.role}', location='{prefs.location or 'any'}'")
     print()
 
-    raw = fetch_jobs(prefs)
+    raw, timestamp = fetch_jobs(prefs)
     jobs = normalize_response(raw)
     if not jobs:
         print("No jobs found.")
@@ -34,13 +34,11 @@ def main() -> None:
     extracted = extract_all(jobs)
     print_summaries(extracted)
 
-    export_prompt = input("Export results to JSON and CSV in debug/? [y/N]: ").strip().lower()
-    if export_prompt == "y":
-        base = Path("debug")
-        base.mkdir(parents=True, exist_ok=True)
-        export_json(extracted, base / "jobs_export.json")
-        export_csv(extracted, base / "jobs_export.csv")
-        print("Exported to debug/jobs_export.json and debug/jobs_export.csv")
+    results_dir = Path("results")
+    results_dir.mkdir(parents=True, exist_ok=True)
+    export_json(extracted, results_dir / f"{timestamp}_jobs.json")
+    export_csv(extracted, results_dir / f"{timestamp}_jobs.csv")
+    print(f"Exported to results/{timestamp}_jobs.json and results/{timestamp}_jobs.csv")
 
 
 if __name__ == "__main__":

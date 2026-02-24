@@ -25,13 +25,14 @@ def _ensure_debug_dir() -> Path:
     return DEBUG_DIR
 
 
-def _timestamp_filename() -> str:
-    return datetime.now().strftime("%Y%m%d_%H%M%S") + "_response.json"
+def get_timestamp() -> str:
+    """Return timestamp string (YYYYMMDD_HHMMSS) for correlating debug and result files."""
+    return datetime.now().strftime("%Y%m%d_%H%M%S")
 
 
-def _save_raw_response(raw: str | dict, path: Path) -> None:
+def _save_raw_response(raw: str | dict, path: Path, timestamp: str) -> None:
     _ensure_debug_dir()
-    filepath = path / _timestamp_filename()
+    filepath = path / f"{timestamp}_response.json"
     with open(filepath, "w", encoding="utf-8") as f:
         if isinstance(raw, dict):
             json.dump(raw, f, indent=2, ensure_ascii=False)
@@ -85,15 +86,16 @@ def _load_mock() -> dict:
     return _parse_mock_content(content)
 
 
-def fetch_jobs(prefs: SearchPreferences) -> dict:
+def fetch_jobs(prefs: SearchPreferences) -> tuple[dict, str]:
     """
     Fetch job data from JSearch API (if RAPID_API_KEY set) or mock file.
     Saves raw response under debug/api-response with a timestamped filename.
-    Returns the raw API response dict.
+    Returns (raw API response dict, timestamp) for correlating with result exports.
     Raises SystemExit (or callers should exit) when no source is available.
     """
     api_key = os.environ.get("RAPID_API_KEY", "").strip()
     raw: dict
+    timestamp = get_timestamp()
 
     if api_key:
         raw = _fetch_jsearch(api_key, prefs)
@@ -110,5 +112,5 @@ def fetch_jobs(prefs: SearchPreferences) -> dict:
             print(f"Warning: Could not parse mock file: {e}")
             raise SystemExit(1) from e
 
-    _save_raw_response(raw, _ensure_debug_dir())
-    return raw
+    _save_raw_response(raw, _ensure_debug_dir(), timestamp)
+    return raw, timestamp

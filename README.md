@@ -8,7 +8,7 @@ A Python CLI that searches job boards via the JSearch API (or a mock response), 
 2. **Data source** – If `RAPID_API_KEY` is set in `.env`, the app calls the JSearch RapidAPI with your role and location. Otherwise it loads the mock response from `docs/RapidAPIResponse.txt` (Python-style or JSON). If neither is available, it warns and exits.
 3. **Debug save** – The raw API/mock response is saved under `debug/api-response/` with a timestamped filename (e.g. `YYYYMMDD_HHMMSS_response.json`).
 4. **Extraction** – For each job the app derives: location type (on-site/hybrid/remote), position type (permanent/contract/freelance), minimum salary, industry, job ad language, tech stack, requirements, and job link.
-5. **Summary** – A short summary per job is printed to the console; you can then export to `debug/jobs_export.json` and `debug/jobs_export.csv` if prompted.
+5. **Summary** – A short summary per job is printed to the console. Results are always exported to the `results/` folder using the same timestamp as the debug file (e.g. `results/YYYYMMDD_HHMMSS_jobs.json` and `results/YYYYMMDD_HHMMSS_jobs.csv`), so you can match them to the raw response in `debug/api-response/`.
 
 ## Setup
 
@@ -35,7 +35,7 @@ From the project root:
 .venv/bin/python main.py
 ```
 
-Or activate the venv and run `python main.py`. When prompted, enter role/location or press Enter for defaults; at the end you can answer `y` to export results.
+Or activate the venv and run `python main.py`. When prompted, enter role/location or press Enter for defaults. Results are always written to `results/` (no confirmation).
 
 ## Project structure
 
@@ -48,8 +48,8 @@ Or activate the venv and run `python main.py`. When prompted, enter role/locatio
 | `src/extract.py` | Extracts location type, position type, salary, industry, language, tech stack, requirements, job link. |
 | `src/summary.py` | Builds per-job summary text and export (JSON/CSV). |
 | `docs/RapidAPIResponse.txt` | Mock JSearch response (used when no API key). |
-| `debug/api-response/` | Timestamped raw API responses. |
-| `debug/` | Optional export files: `jobs_export.json`, `jobs_export.csv`. |
+| `debug/api-response/` | Timestamped raw API responses (`YYYYMMDD_HHMMSS_response.json`). |
+| `results/` | Timestamped exports (`YYYYMMDD_HHMMSS_jobs.json`, `YYYYMMDD_HHMMSS_jobs.csv`); same timestamp as the debug file for the same run. |
 
 ## Environment
 
