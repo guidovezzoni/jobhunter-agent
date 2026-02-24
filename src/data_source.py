@@ -86,6 +86,31 @@ def _load_mock() -> dict:
     return _parse_mock_content(content)
 
 
+def _job_matches_location(job: dict, location_query: str) -> bool:
+    """True if job's location fields match the user's location string (case-insensitive)."""
+    if not location_query or not location_query.strip():
+        return True
+    q = location_query.strip().lower()
+    fields = (
+        job.get("job_location") or "",
+        job.get("job_city") or "",
+        job.get("job_state") or "",
+        job.get("job_country") or "",
+    )
+    return any(q in (str(f).lower()) for f in fields if f)
+
+
+def _filter_by_location(raw: dict, location: str) -> dict:
+    """Filter raw response data by location; if location empty, return unchanged."""
+    if not location or not location.strip():
+        return raw
+    data = raw.get("data")
+    if not isinstance(data, list):
+        return raw
+    filtered = [j for j in data if isinstance(j, dict) and _job_matches_location(j, location)]
+    return {**raw, "data": filtered}
+
+
 def fetch_jobs(prefs: SearchPreferences) -> tuple[dict, str]:
     """
     Fetch job data from JSearch API (if RAPID_API_KEY set) or mock file.
@@ -102,6 +127,7 @@ def fetch_jobs(prefs: SearchPreferences) -> tuple[dict, str]:
     else:
         try:
             raw = _load_mock()
+            raw = _filter_by_location(raw, prefs.location)
         except FileNotFoundError as e:
             print(
                 "Warning: RAPID_API_KEY is not set in .env and mock file "
