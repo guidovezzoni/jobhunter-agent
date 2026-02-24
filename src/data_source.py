@@ -58,15 +58,73 @@ def _parse_mock_content(content: str) -> Any:
         raise ValueError(f"Could not parse mock file as JSON or Python literal: {e}") from e
 
 
+def _infer_country(location: str) -> str | None:
+    """
+    Best-effort mapping from a free-form location string to a country code.
+    This is heuristic and intentionally small; it can be extended over time.
+    """
+    if not location:
+        return None
+    loc = location.lower()
+
+    # Explicit country names / abbreviations
+    country_keywords: dict[str, list[str]] = {
+        "gb": ["uk", "united kingdom", "england", "scotland", "wales", "britain", "great britain"],
+        "us": ["usa", "united states", "united states of america", "america", "u.s.", "u.s.a."],
+        "ca": ["canada"],
+        "de": ["germany", "deutschland"],
+        "fr": ["france"],
+        "es": ["spain", "españa"],
+        "it": ["italy", "italia"],
+        "au": ["australia"],
+        "in": ["india"],
+    }
+
+    # Common city → country hints (non-exhaustive; can be extended)
+    city_hints: dict[str, str] = {
+        "london": "gb",
+        "paris": "fr",
+        "berlin": "de",
+        "madrid": "es",
+        "barcelona": "es",
+        "rome": "it",
+        "sydney": "au",
+        "melbourne": "au",
+        "toronto": "ca",
+        "vancouver": "ca",
+        "new york": "us",
+        "san francisco": "us",
+        "los angeles": "us",
+    }
+
+    for code, keywords in country_keywords.items():
+        for kw in keywords:
+            if kw in loc:
+                return code
+
+    for city, code in city_hints.items():
+        if city in loc:
+            return code
+
+    return None
+
+
 def _fetch_jsearch(api_key: str, prefs: SearchPreferences) -> dict:
     """Call JSearch API with role and optional location."""
+    if prefs.location:
+        query = f"{prefs.role} in {prefs.location}"
+    else:
+        query = prefs.role
+
     params = {
-        "query": prefs.role,
+        "query": query,
         "page": 1,
         "num_pages": 1,
     }
-    if prefs.location:
-        params["location"] = prefs.location
+
+    country = _infer_country(prefs.location)
+    if country:
+        params["country"] = country
     headers = {
         "X-RapidAPI-Key": api_key,
         "X-RapidAPI-Host": "jsearch.p.rapidapi.com",
