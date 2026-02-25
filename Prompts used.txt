@@ -93,3 +93,9 @@ Finally, update README.md and AGENTS.md accordingly.
 
 ---
 
+It looks like when calling the API we are only requesting the first page as I always get max 10 results, for instance using Android developer + London + week.
+Could you please check that and ensure multiple pages are requested if available?
+Finally, update AGENTS.md accordingly.
+
+---
+

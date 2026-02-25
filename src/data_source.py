@@ -19,6 +19,7 @@ load_dotenv()
 JSEARCH_URL = "https://jsearch.p.rapidapi.com/search"
 MOCK_PATH = Path("docs/RapidAPIResponse.txt")
 DEBUG_DIR = Path("debug/api-response")
+MAX_PAGES = 5  # Number of result pages to request per API call (10 results/page)
 
 
 def _ensure_debug_dir() -> Path:
@@ -120,7 +121,7 @@ def _fetch_jsearch(api_key: str, prefs: SearchPreferences) -> dict:
     params = {
         "query": query,
         "page": 1,
-        "num_pages": 1,
+        "num_pages": MAX_PAGES,
         "date_posted": prefs.date_posted,
     }
 
