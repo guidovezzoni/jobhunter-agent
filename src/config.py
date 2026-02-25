@@ -111,8 +111,8 @@ def collect_preferences() -> SearchPreferences:
     # Core search parameters
     role_input = input(f"Role [{DEFAULT_ROLE}]: ").strip() or DEFAULT_ROLE
     location_input = input(
-        "Location (leave empty for any, or enter 'europe'/'eu'/'european economic area' "
-        f"for a multi-country European search) [{DEFAULT_LOCATION}]: "
+        "Location (Barcelona, London, or leave empty for any location, "
+        f"'europe' will trigger a multi-country European search) [{DEFAULT_LOCATION}]: "
     ).strip()
 
     # Multi-country Europe mode
