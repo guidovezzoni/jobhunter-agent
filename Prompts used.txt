@@ -99,3 +99,17 @@ Finally, update AGENTS.md accordingly.
 
 ---
 
+I need to improve the current project.
+I need to search all remote jobs in Europe but I don't know how to do that: if I use "remote" as location, the API returns a lot of US-based job, which usually are only remote in the US, so not valid here in Europe, could you please investigate what is the correct way to implement that with the API and draft a plan to implement that?
+Finally, update README.md and AGENTS.md accordingly.
+
+---
+
+When the location selected is "Europe" or "EU" or "European Economic Area" then we target multiple countries.
+The API should then be called for each of those countries and all the results should be merged together and treated as a single result - like it was a single location. So it should also be cached as it was a single location.
+Countries matching the europe definition will be defined in the config.yml and in the initial interactive mode requests.
+Default will include UK, ES, PT, but also add a comment in configl.yml including all the countries in Europe, this is not recommended as it will hit the API several time possibly reaching the hit rate, but it should still be possible.
+Finally, update README.md and AGENTS.md accordingly.
+
+---
+

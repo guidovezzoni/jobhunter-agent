@@ -176,6 +176,7 @@ def extract_job_info(job: dict[str, Any]) -> dict[str, Any]:
         "role": job.get("job_title"),
         "employer_name": job.get("employer_name"),
         "location": job.get("job_location"),
+        "job_country": job.get("job_country"),
         "location_type": _location_type(job),
         "position_type": _position_type(job),
         "minimum_salary": _min_salary(job),

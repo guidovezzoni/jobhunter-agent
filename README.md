@@ -6,7 +6,7 @@ A Python CLI that searches job boards via the JSearch API (or a mock response), 
 
 1. **Preferences & filters** – On launch you can either:
    - Run **interactively** and are prompted for:
-     - **Role** (default: "Android Developer") and **Location** (default: empty = any location), used to query jobs.
+     - **Role** (default: "Android Developer") and **Location** (default: empty = any location), used to query jobs. Enter `europe`, `eu`, or `european economic area` to search across multiple European countries (see below).
      - **Posting date** (`today` / `week` / `month` / `all`, default `today`) – sent directly to the API to limit results to jobs posted within that window.
      - Optional **filters** applied afterwards: location type(s) (`on-site`, `hybrid`, `remote`), position type(s) (`permanent`, `contract`, `freelance`), minimum salary, industry text, and job spec language (default `en`, or `any` for no language filter).
    - Or run **non-interactively** by passing a YAML config file with all of the above fields.
@@ -54,21 +54,39 @@ You can keep multiple YAML files (e.g. `configs/android_remote.yaml`, `configs/b
 .venv/bin/python main.py --config configs/android_remote.yaml
 ```
 
+## Multi-country European search
+
+Setting location to `europe`, `eu`, or `european economic area` (case-insensitive) activates multi-country mode. Instead of a single API call, the app makes one call per country in a configurable list, then merges and deduplicates results before the rest of the pipeline runs.
+
+**Default countries:** `gb`, `es`, `pt`. Override via the `europe_countries` key in YAML or interactively at the prompt.
+
+```yaml
+role: "Android Developer"
+location: "europe"
+date_posted: "week"
+location_types: ["remote"]
+europe_countries: [gb, es, pt, de, nl]
+```
+
+> **API quota note:** each country in the list triggers `MAX_PAGES` (default 5) API requests. With the default 3-country list that is 15 requests per run. Extending the list to all ~30 European countries would require ~150 requests — not recommended on the free tier (200 requests/month).
+
+The merged results are cached as a single entry keyed by `(role, location, sorted_country_codes, date_posted)`. Changing the country list automatically busts the cache.
+
 ## Project structure
 
 | Path | Purpose |
 |------|--------|
 | `main.py` | Entry point: parses CLI args (including optional `--config`), collects preferences and filters (interactively or from YAML), fetches or reuses cached jobs, normalizes, extracts, filters, prints summaries, and exports results. |
-| `src/config.py` | Defines `SearchPreferences`, `collect_preferences()` for role/location and all post-fetch filters, and `load_preferences_from_yaml()` for YAML-based configurations. |
-| `src/data_source.py` | Fetches from JSearch API or mock file, applies basic location handling, uses the cache, and saves the raw response to `debug/api-response/`. |
-| `src/cache.py` | Simple file-based cache of raw API/mock responses keyed by `(role, location, date_posted)` with a 60-minute TTL. |
+| `src/config.py` | Defines `SearchPreferences`, `EUROPE_LOCATION_TRIGGERS`, `DEFAULT_EUROPE_COUNTRIES`, `collect_preferences()` for role/location and all post-fetch filters, and `load_preferences_from_yaml()` for YAML-based configurations. |
+| `src/data_source.py` | Fetches from JSearch API or mock file. In multi-country mode calls `_fetch_jsearch_multi_country()` which loops over `europe_countries`, merges and deduplicates results. Applies basic country inference for single-location searches. Saves raw response to `debug/api-response/`. |
+| `src/cache.py` | Simple file-based cache of raw API/mock responses keyed by `(role, location, date_posted)` (plus sorted country codes in multi-country mode) with a 60-minute TTL. |
 | `src/normalize.py` | Converts raw response into a list of normalized job dicts. |
-| `src/extract.py` | Extracts location type, position type, salary, industry, language, tech stack, requirements, job link. |
+| `src/extract.py` | Extracts location type, position type, salary, industry, language, tech stack, requirements, job link, and `job_country`. |
 | `src/filtering.py` | Applies user-selected filters (location type, position type, minimum salary, industry, language) to the extracted jobs. |
 | `src/summary.py` | Builds per-job summary text and export (JSON/CSV). |
 | `docs/RapidAPIResponse.txt` | Mock JSearch response (used when no API key). |
 | `debug/api-response/` | Timestamped raw API responses (`YYYYMMDD_HHMMSS_response.json`). |
-| `debug/cache/` | Cache files storing raw responses per `(role, location, date_posted)`. |
+| `debug/cache/` | Cache files storing raw responses per `(role, location[_countries], date_posted)`. |
 | `results/` | Timestamped exports (`YYYYMMDD_HHMMSS_jobs.json`, `YYYYMMDD_HHMMSS_jobs.csv`); same timestamp as the debug file for the same run. |
 
 ## Environment

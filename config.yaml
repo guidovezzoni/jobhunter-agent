@@ -7,17 +7,27 @@
 # Fields:
 #   role             : Job title or role to search for.
 #   location         : Free-text location; empty means any location.
+#                      Special values that trigger multi-country European search:
+#                        "europe", "eu", "european economic area"
+#                      When one of these is used, the API is called once per
+#                      country in europe_countries and results are merged.
 #   date_posted      : API-level posting date filter: today, week, month, all.
 #   location_types   : Optional list; any of: on-site, hybrid, remote.
 #   position_types   : Optional list; any of: permanent, contract, freelance.
 #   minimum_salary   : Optional integer minimum salary; null = no filter.
 #   industry_filter  : Optional free-text industry filter; null = no filter.
 #   language_filter  : Job spec language (e.g. "en", "any").
+#   europe_countries : List of ISO 3166-1 alpha-2 country codes used when
+#                      location is a Europe trigger. Each code causes one
+#                      additional API call (pages × countries API requests
+#                      total), so keep this list short on free-tier plans.
+#                      Omit this key to use the built-in default: [gb, es, pt].
 #
 
 role: "Android Developer"
 
 # Empty string means any location (no location restriction).
+# Use "europe", "eu", or "european economic area" for multi-country EU search.
 location: ""
 
 # Posting date filter sent to the JSearch API.
@@ -45,3 +55,42 @@ industry_filter: null
 # "en" = English only, "any" = no language filtering, or any language code.
 language_filter: "en"
 
+# Countries to search when location is "europe" / "eu" / "european economic area".
+# Default (when this key is absent): [gb, es, pt]
+# Each country code triggers one additional set of API calls, so extending
+# this list will consume API quota proportionally.
+europe_countries: [gb, es, pt]
+
+# Full European country list (NOT recommended on free-tier — hits quota fast):
+# europe_countries: [
+#   gb,  # United Kingdom
+#   de,  # Germany
+#   fr,  # France
+#   es,  # Spain
+#   pt,  # Portugal
+#   it,  # Italy
+#   nl,  # Netherlands
+#   be,  # Belgium
+#   ch,  # Switzerland
+#   at,  # Austria
+#   se,  # Sweden
+#   dk,  # Denmark
+#   no,  # Norway
+#   fi,  # Finland
+#   ie,  # Ireland
+#   pl,  # Poland
+#   cz,  # Czech Republic
+#   ro,  # Romania
+#   hu,  # Hungary
+#   sk,  # Slovakia
+#   si,  # Slovenia
+#   hr,  # Croatia
+#   bg,  # Bulgaria
+#   lt,  # Lithuania
+#   lv,  # Latvia
+#   ee,  # Estonia
+#   lu,  # Luxembourg
+#   mt,  # Malta
+#   cy,  # Cyprus
+#   gr,  # Greece
+# ]

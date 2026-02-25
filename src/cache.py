@@ -26,23 +26,39 @@ def _ensure_cache_dir() -> Path:
     return CACHE_DIR
 
 
-def _key_to_path(role: str, location: str, date_posted: str) -> Path:
+def _key_to_path(
+    role: str,
+    location: str,
+    date_posted: str,
+    europe_countries: list[str] | None = None,
+) -> Path:
     def slug(s: str) -> str:
         s = s.strip().lower() or "any"
         return "".join(c if c.isalnum() or c in ("-", "_") else "_" for c in s)[:80]
 
     role_slug = slug(role)
-    loc_slug = slug(location or "any")
+    if europe_countries:
+        # Encode sorted country list into the location slug so that changing
+        # the country list automatically busts the cache.
+        codes = "_".join(sorted(c.lower() for c in europe_countries))
+        loc_slug = slug(location or "europe") + "__" + codes
+    else:
+        loc_slug = slug(location or "any")
     dp_slug = slug(date_posted or "today")
     return _ensure_cache_dir() / f"{role_slug}__{loc_slug}__{dp_slug}.json"
 
 
-def load_cache(role: str, location: str, date_posted: str) -> Optional[dict[str, Any]]:
+def load_cache(
+    role: str,
+    location: str,
+    date_posted: str,
+    europe_countries: list[str] | None = None,
+) -> Optional[dict[str, Any]]:
     """
     Return cached raw_response if present and not older than CACHE_TTL.
     Otherwise return None.
     """
-    path = _key_to_path(role, location, date_posted)
+    path = _key_to_path(role, location, date_posted, europe_countries)
     if not path.exists():
         return None
     try:
@@ -71,7 +87,13 @@ def load_cache(role: str, location: str, date_posted: str) -> Optional[dict[str,
     return raw
 
 
-def save_cache(role: str, location: str, date_posted: str, raw_response: dict[str, Any]) -> None:
+def save_cache(
+    role: str,
+    location: str,
+    date_posted: str,
+    raw_response: dict[str, Any],
+    europe_countries: list[str] | None = None,
+) -> None:
     """Save raw_response to cache with current UTC timestamp."""
     entry = CacheEntry(
         role=role,
@@ -80,7 +102,7 @@ def save_cache(role: str, location: str, date_posted: str, raw_response: dict[st
         timestamp=datetime.now(timezone.utc).isoformat(),
         raw_response=raw_response,
     )
-    path = _key_to_path(role, location, date_posted)
+    path = _key_to_path(role, location, date_posted, europe_countries)
     with open(path, "w", encoding="utf-8") as f:
         json.dump(asdict(entry), f, indent=2, ensure_ascii=False)
 

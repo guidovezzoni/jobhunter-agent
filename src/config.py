@@ -1,6 +1,6 @@
 """User preferences for job search and post-fetch filtering."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, List, Mapping, Optional
 
@@ -13,6 +13,13 @@ DEFAULT_DATE_POSTED = "today"
 LOCATION_TYPE_CHOICES = {"on-site", "hybrid", "remote"}
 POSITION_TYPE_CHOICES = {"permanent", "contract", "freelance"}
 DATE_POSTED_CHOICES = {"today", "week", "month", "all"}
+
+# Location strings that trigger multi-country European search mode.
+EUROPE_LOCATION_TRIGGERS: frozenset[str] = frozenset(
+    {"europe", "eu", "european economic area"}
+)
+# Default European country codes used when none are explicitly provided.
+DEFAULT_EUROPE_COUNTRIES: list[str] = ["gb", "es", "pt"]
 
 
 @dataclass
@@ -29,6 +36,10 @@ class SearchPreferences:
     minimum_salary: Optional[int]
     industry_filter: Optional[str]
     language_filter: str  # e.g. "en" or "any"
+
+    # Non-empty when location is a Europe trigger; each entry is a 2-letter
+    # ISO country code passed individually to the API (one call per country).
+    europe_countries: List[str] = field(default_factory=list)
 
 
 def _parse_multi_choice(raw: str, valid: set[str]) -> list[str]:
@@ -100,8 +111,21 @@ def collect_preferences() -> SearchPreferences:
     # Core search parameters
     role_input = input(f"Role [{DEFAULT_ROLE}]: ").strip() or DEFAULT_ROLE
     location_input = input(
-        f"Location (leave empty for any) [{DEFAULT_LOCATION}]: "
+        "Location (leave empty for any, or enter 'europe'/'eu'/'european economic area' "
+        f"for a multi-country European search) [{DEFAULT_LOCATION}]: "
     ).strip()
+
+    # Multi-country Europe mode
+    europe_countries: list[str] = []
+    if location_input.lower() in EUROPE_LOCATION_TRIGGERS:
+        default_codes = ",".join(DEFAULT_EUROPE_COUNTRIES)
+        raw_countries = input(
+            f"European country codes to search (comma-separated ISO codes) [{default_codes}]: "
+        ).strip()
+        if raw_countries:
+            europe_countries = [c.strip().lower() for c in raw_countries.split(",") if c.strip()]
+        else:
+            europe_countries = list(DEFAULT_EUROPE_COUNTRIES)
 
     date_posted_raw = input(
         "Posting date filter [today/week/month/all] (default today = past 24 h): "
@@ -158,6 +182,7 @@ def collect_preferences() -> SearchPreferences:
         minimum_salary=minimum_salary,
         industry_filter=industry_filter,
         language_filter=language_filter,
+        europe_countries=europe_countries,
     )
 
 
@@ -218,6 +243,19 @@ def load_preferences_from_yaml(path: str | Path) -> SearchPreferences:
     else:
         language_filter = str(lang_raw).strip().lower()
 
+    # Europe multi-country: read explicit list or fall back to default when
+    # location is a recognised Europe trigger.
+    europe_countries_raw = data.get("europe_countries")
+    if europe_countries_raw is not None:
+        try:
+            europe_countries = [str(c).strip().lower() for c in list(europe_countries_raw) if str(c).strip()]
+        except TypeError:
+            europe_countries = []
+    elif location.lower() in EUROPE_LOCATION_TRIGGERS:
+        europe_countries = list(DEFAULT_EUROPE_COUNTRIES)
+    else:
+        europe_countries = []
+
     return SearchPreferences(
         role=role,
         location=location,
@@ -227,4 +265,5 @@ def load_preferences_from_yaml(path: str | Path) -> SearchPreferences:
         minimum_salary=minimum_salary,
         industry_filter=industry_filter,
         language_filter=language_filter,
+        europe_countries=europe_countries,
     )

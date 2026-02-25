@@ -11,7 +11,7 @@ from typing import Any
 import requests
 from dotenv import load_dotenv
 
-from src.config import SearchPreferences
+from src.config import SearchPreferences, EUROPE_LOCATION_TRIGGERS
 from src.cache import load_cache, save_cache
 
 load_dotenv()
@@ -111,23 +111,30 @@ def _infer_country(location: str) -> str | None:
     return None
 
 
-def _fetch_jsearch(api_key: str, prefs: SearchPreferences) -> dict:
-    """Call JSearch API with role and optional location."""
-    if prefs.location:
-        query = f"{prefs.role} in {prefs.location}"
+def _fetch_jsearch_single(
+    api_key: str,
+    role: str,
+    location: str,
+    date_posted: str,
+    country: str | None = None,
+) -> dict:
+    """Call JSearch API for a single role/location combination."""
+    if location and location.lower() not in EUROPE_LOCATION_TRIGGERS:
+        query = f"{role} in {location}"
     else:
-        query = prefs.role
+        query = role
 
-    params = {
+    params: dict = {
         "query": query,
         "page": 1,
         "num_pages": MAX_PAGES,
-        "date_posted": prefs.date_posted,
+        "date_posted": date_posted,
     }
 
-    country = _infer_country(prefs.location)
-    if country:
-        params["country"] = country
+    resolved_country = country or _infer_country(location)
+    if resolved_country:
+        params["country"] = resolved_country
+
     headers = {
         "X-RapidAPI-Key": api_key,
         "X-RapidAPI-Host": "jsearch.p.rapidapi.com",
@@ -135,6 +142,49 @@ def _fetch_jsearch(api_key: str, prefs: SearchPreferences) -> dict:
     resp = requests.get(JSEARCH_URL, params=params, headers=headers, timeout=30)
     resp.raise_for_status()
     return resp.json()
+
+
+def _fetch_jsearch_multi_country(api_key: str, prefs: SearchPreferences) -> dict:
+    """
+    Call JSearch API once per country in prefs.europe_countries, then merge
+    and deduplicate results by job_id into a single synthetic response dict.
+    """
+    seen_ids: set[str] = set()
+    merged_jobs: list[dict] = []
+
+    for country_code in prefs.europe_countries:
+        print(f"  Fetching jobs for country: {country_code.upper()}...")
+        try:
+            result = _fetch_jsearch_single(
+                api_key,
+                role=prefs.role,
+                location=country_code,
+                date_posted=prefs.date_posted,
+                country=country_code,
+            )
+        except Exception as exc:  # noqa: BLE001
+            print(f"  Warning: API call for country '{country_code}' failed: {exc}")
+            continue
+
+        for job in result.get("data") or []:
+            job_id = job.get("job_id") or job.get("job_title", "")
+            if job_id not in seen_ids:
+                seen_ids.add(job_id)
+                merged_jobs.append(job)
+
+    return {"status": "OK", "data": merged_jobs}
+
+
+def _fetch_jsearch(api_key: str, prefs: SearchPreferences) -> dict:
+    """Dispatch to single or multi-country JSearch API call based on prefs."""
+    if prefs.europe_countries:
+        return _fetch_jsearch_multi_country(api_key, prefs)
+    return _fetch_jsearch_single(
+        api_key,
+        role=prefs.role,
+        location=prefs.location,
+        date_posted=prefs.date_posted,
+    )
 
 
 def _load_mock() -> dict:
@@ -161,12 +211,27 @@ def _job_matches_location(job: dict, location_query: str) -> bool:
     return any(q in (str(f).lower()) for f in fields if f)
 
 
-def _filter_by_location(raw: dict, location: str) -> dict:
-    """Filter raw response data by location; if location empty, return unchanged."""
-    if not location or not location.strip():
-        return raw
+def _filter_by_location(raw: dict, prefs: SearchPreferences) -> dict:
+    """
+    Filter raw response data by location for the mock path.
+    For multi-country Europe searches, keeps only jobs whose job_country
+    is in prefs.europe_countries. For normal searches, falls back to a
+    substring match on location fields.
+    """
     data = raw.get("data")
     if not isinstance(data, list):
+        return raw
+
+    if prefs.europe_countries:
+        allowed = {c.lower() for c in prefs.europe_countries}
+        filtered = [
+            j for j in data
+            if isinstance(j, dict) and (j.get("job_country") or "").lower() in allowed
+        ]
+        return {**raw, "data": filtered}
+
+    location = prefs.location
+    if not location or not location.strip():
         return raw
     filtered = [j for j in data if isinstance(j, dict) and _job_matches_location(j, location)]
     return {**raw, "data": filtered}
@@ -186,8 +251,9 @@ def fetch_jobs(prefs: SearchPreferences) -> tuple[dict, str, bool, bool]:
     used_cache = False
     api_called = False
 
-    # Try cache first (role + location + date_posted); filters are applied later.
-    cached = load_cache(prefs.role, prefs.location, prefs.date_posted)
+    # Try cache first (role + location + date_posted + europe_countries);
+    # filters are applied later.
+    cached = load_cache(prefs.role, prefs.location, prefs.date_posted, prefs.europe_countries or None)
     if cached is not None:
         raw = cached
         used_cache = True
@@ -198,7 +264,7 @@ def fetch_jobs(prefs: SearchPreferences) -> tuple[dict, str, bool, bool]:
         else:
             try:
                 raw = _load_mock()
-                raw = _filter_by_location(raw, prefs.location)
+                raw = _filter_by_location(raw, prefs)
             except FileNotFoundError as e:
                 print(
                     "Warning: RAPID_API_KEY is not set in .env and mock file "
@@ -209,7 +275,7 @@ def fetch_jobs(prefs: SearchPreferences) -> tuple[dict, str, bool, bool]:
                 print(f"Warning: Could not parse mock file: {e}")
                 raise SystemExit(1) from e
 
-        save_cache(prefs.role, prefs.location, prefs.date_posted, raw)
+        save_cache(prefs.role, prefs.location, prefs.date_posted, raw, prefs.europe_countries or None)
 
     _save_raw_response(raw, _ensure_debug_dir(), timestamp)
     return raw, timestamp, used_cache, api_called
