@@ -170,24 +170,29 @@ def _filter_by_location(raw: dict, location: str) -> dict:
     return {**raw, "data": filtered}
 
 
-def fetch_jobs(prefs: SearchPreferences) -> tuple[dict, str]:
+def fetch_jobs(prefs: SearchPreferences) -> tuple[dict, str, bool, bool]:
     """
     Fetch job data from JSearch API (if RAPID_API_KEY set) or mock file.
     Saves raw response under debug/api-response with a timestamped filename.
-    Returns (raw API response dict, timestamp) for correlating with result exports.
+    Returns (raw API response dict, timestamp, used_cache, api_called) for
+    correlating with result exports and reporting source usage.
     Raises SystemExit (or callers should exit) when no source is available.
     """
     api_key = os.environ.get("RAPID_API_KEY", "").strip()
     raw: dict
     timestamp = get_timestamp()
+    used_cache = False
+    api_called = False
 
     # Try cache first (role + location); filters are applied later.
     cached = load_cache(prefs.role, prefs.location)
     if cached is not None:
         raw = cached
+        used_cache = True
     else:
         if api_key:
             raw = _fetch_jsearch(api_key, prefs)
+            api_called = True
         else:
             try:
                 raw = _load_mock()
@@ -205,4 +210,4 @@ def fetch_jobs(prefs: SearchPreferences) -> tuple[dict, str]:
         save_cache(prefs.role, prefs.location, raw)
 
     _save_raw_response(raw, _ensure_debug_dir(), timestamp)
-    return raw, timestamp
+    return raw, timestamp, used_cache, api_called

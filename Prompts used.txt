@@ -68,3 +68,13 @@ Please create the default config.yaml file which will serve as a template for ot
 Finally, update README.md and AGENTS.md accordingly.
 
 ---
+
+There is currently a short recap of parameters and results before the summary, could you please move that after the summary?
+Please ensure it includes:
+- Parameters values
+- If the API was called or if the cached was used
+- Number of entries retrieved before filtering
+- Number of entries available after filtering
+Please ensure the recap is printed even when the  API/cache do not return any result.
+
+---

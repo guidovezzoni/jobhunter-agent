@@ -53,33 +53,49 @@ def main() -> None:
     print(f"Searching: role='{prefs.role}', location='{prefs.location or 'any'}'")
     print()
 
-    raw, timestamp = fetch_jobs(prefs)
+    raw, timestamp, used_cache, api_called = fetch_jobs(prefs)
     jobs = normalize_response(raw)
+    total_before = len(jobs)
+
     if not jobs:
         print("No jobs found.")
-        return
-    print(f"Found {len(jobs)} job(s) before filtering. Extracting key info...")
-    print()
+        extracted = []
+        filtered = []
+    else:
+        print(f"Found {total_before} job(s) before filtering. Extracting key info...")
+        print()
+        extracted = extract_all(jobs)
+        filtered = filter_jobs(extracted, prefs)
 
-    extracted = extract_all(jobs)
-    filtered = filter_jobs(extracted, prefs)
+    total_after = len(filtered)
 
-    if not filtered:
+    if jobs and not filtered:
         print(
             "No jobs matched your filters. Try relaxing them (e.g. remove minimum "
             "salary or broaden location/position type)."
         )
-        return
+    elif filtered:
+        print_summaries(filtered)
 
-    print(f"{len(filtered)} job(s) remain after filtering.")
+    # Recap run parameters and high-level results after the summaries or messages.
     print()
-    print_summaries(filtered)
+    print("Run recap")
+    print("-" * 40)
+    print(f"Role: {prefs.role}")
+    print(f"Location: {prefs.location or 'any'}")
+    print(f"API called: {'yes' if api_called else 'no'}")
+    print(f"Used cache: {'yes' if used_cache else 'no'}")
+    print(f"Jobs before filtering: {total_before}")
+    print(f"Jobs after filtering: {total_after}")
 
-    results_dir = Path("results")
-    results_dir.mkdir(parents=True, exist_ok=True)
-    export_json(filtered, results_dir / f"{timestamp}_jobs.json")
-    export_csv(filtered, results_dir / f"{timestamp}_jobs.csv")
-    print(f"Exported to results/{timestamp}_jobs.json and results/{timestamp}_jobs.csv")
+    if filtered:
+        results_dir = Path("results")
+        results_dir.mkdir(parents=True, exist_ok=True)
+        export_json(filtered, results_dir / f"{timestamp}_jobs.json")
+        export_csv(filtered, results_dir / f"{timestamp}_jobs.csv")
+        print(
+            f"Exported to results/{timestamp}_jobs.json and results/{timestamp}_jobs.csv"
+        )
 
 
 if __name__ == "__main__":
