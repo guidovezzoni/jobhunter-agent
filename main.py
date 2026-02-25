@@ -14,6 +14,7 @@ from src.data_source import fetch_jobs
 from src.normalize import normalize_response
 from src.extract import extract_all
 from src.summary import print_summaries, export_json, export_csv
+from src.filtering import filter_jobs
 
 
 def main() -> None:
@@ -28,16 +29,24 @@ def main() -> None:
     if not jobs:
         print("No jobs found.")
         return
-    print(f"Found {len(jobs)} job(s). Extracting key info...")
+    print(f"Found {len(jobs)} job(s) before filtering. Extracting key info...")
     print()
 
     extracted = extract_all(jobs)
-    print_summaries(extracted)
+    filtered = filter_jobs(extracted, prefs)
+
+    if not filtered:
+        print("No jobs matched your filters. Try relaxing them (e.g. remove minimum salary or broaden location/position type).")
+        return
+
+    print(f"{len(filtered)} job(s) remain after filtering.")
+    print()
+    print_summaries(filtered)
 
     results_dir = Path("results")
     results_dir.mkdir(parents=True, exist_ok=True)
-    export_json(extracted, results_dir / f"{timestamp}_jobs.json")
-    export_csv(extracted, results_dir / f"{timestamp}_jobs.csv")
+    export_json(filtered, results_dir / f"{timestamp}_jobs.json")
+    export_csv(filtered, results_dir / f"{timestamp}_jobs.csv")
     print(f"Exported to results/{timestamp}_jobs.json and results/{timestamp}_jobs.csv")
 
 

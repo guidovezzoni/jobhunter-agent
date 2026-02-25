@@ -28,9 +28,22 @@ The general workflow is:
 - Generate a tailored summary with the key job info and other info you deem important
 
 Additional requirements:
-- Please add a readme.md and an agents.md and keep them updated with adding additional changes?
+- Please add/update README.md and AGENTS.md and keep them updated when applying additional changes.
 
 Please define the above workflow in plain language
 
 ---
 
+Now I'd like to add an additional filtering on the results already obtained from the endpoint.
+I'd like to be able to filter on these values:
+    - Location type should be none or more of on-site/hybrid/remote (default is none, which means no filtering, it could be all of them or none at all)
+    - Position type any of permanent position, contract, freelance (default is empty, which means no filtering, it could be all of them or none at all)
+    - minimum salary (default no minimum)
+    - industry (default not defined)
+    - job spec language (default english)
+The above values should be added to the initial request of values to the user: role and location will be used for the API call, the other values will be used for the following filtering.
+Also, the API call result should be cached and re-used for the following 60 minutes, if and only if role and location are the same, the following filtering should be performed every time instead.
+Finally, please update README.md and AGENTS.md and keep them updated when applying additional changes.
+
+
+Please define the above workflow in plain language

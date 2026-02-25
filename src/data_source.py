@@ -12,6 +12,7 @@ import requests
 from dotenv import load_dotenv
 
 from src.config import SearchPreferences
+from src.cache import load_cache, save_cache
 
 load_dotenv()
 
@@ -180,21 +181,28 @@ def fetch_jobs(prefs: SearchPreferences) -> tuple[dict, str]:
     raw: dict
     timestamp = get_timestamp()
 
-    if api_key:
-        raw = _fetch_jsearch(api_key, prefs)
+    # Try cache first (role + location); filters are applied later.
+    cached = load_cache(prefs.role, prefs.location)
+    if cached is not None:
+        raw = cached
     else:
-        try:
-            raw = _load_mock()
-            raw = _filter_by_location(raw, prefs.location)
-        except FileNotFoundError as e:
-            print(
-                "Warning: RAPID_API_KEY is not set in .env and mock file "
-                f"docs/RapidAPIResponse.txt is not present. {e}"
-            )
-            raise SystemExit(1) from e
-        except ValueError as e:
-            print(f"Warning: Could not parse mock file: {e}")
-            raise SystemExit(1) from e
+        if api_key:
+            raw = _fetch_jsearch(api_key, prefs)
+        else:
+            try:
+                raw = _load_mock()
+                raw = _filter_by_location(raw, prefs.location)
+            except FileNotFoundError as e:
+                print(
+                    "Warning: RAPID_API_KEY is not set in .env and mock file "
+                    f"docs/RapidAPIResponse.txt is not present. {e}"
+                )
+                raise SystemExit(1) from e
+            except ValueError as e:
+                print(f"Warning: Could not parse mock file: {e}")
+                raise SystemExit(1) from e
+
+        save_cache(prefs.role, prefs.location, raw)
 
     _save_raw_response(raw, _ensure_debug_dir(), timestamp)
     return raw, timestamp
