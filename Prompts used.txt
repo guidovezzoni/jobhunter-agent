@@ -78,3 +78,18 @@ Please ensure it includes:
 Please ensure the recap is printed even when the  API/cache do not return any result.
 
 ---
+
+I need to improve the current project.
+I'd like to add an additional parameter for the API interrogation and that would be the posting date.
+Possible values are:  Past 24 hours, Past week, Past Month, Any time.
+Default should be "Past 24 hours".
+
+Requirements:
+- the API call should be updated so this parameter is used also, in order to reduce the usage of the API for long lists.
+- the API call should also request to sort the result by posting date if possible
+- the new paramenter should be added to the @config.yaml  file and in the interactive mode it should be requested to the user.
+
+Finally, update README.md and AGENTS.md accordingly.
+
+---
+

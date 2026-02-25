@@ -8,9 +8,11 @@ import yaml
 
 DEFAULT_ROLE = "Android Developer"
 DEFAULT_LOCATION = ""
+DEFAULT_DATE_POSTED = "today"
 
 LOCATION_TYPE_CHOICES = {"on-site", "hybrid", "remote"}
 POSITION_TYPE_CHOICES = {"permanent", "contract", "freelance"}
+DATE_POSTED_CHOICES = {"today", "week", "month", "all"}
 
 
 @dataclass
@@ -19,6 +21,7 @@ class SearchPreferences:
 
     role: str
     location: str
+    date_posted: str  # API-level filter: today, week, month, all
 
     # Optional filters applied after fetching results
     location_types: List[str]
@@ -100,6 +103,11 @@ def collect_preferences() -> SearchPreferences:
         f"Location (leave empty for any) [{DEFAULT_LOCATION}]: "
     ).strip()
 
+    date_posted_raw = input(
+        "Posting date filter [today/week/month/all] (default today = past 24 h): "
+    ).strip().lower()
+    date_posted = date_posted_raw if date_posted_raw in DATE_POSTED_CHOICES else DEFAULT_DATE_POSTED
+
     # Filters
     loc_types_raw = input(
         "Location types filter (comma-separated: on-site, hybrid, remote; "
@@ -144,6 +152,7 @@ def collect_preferences() -> SearchPreferences:
     return SearchPreferences(
         role=role_input,
         location=location_input,
+        date_posted=date_posted,
         location_types=location_types,
         position_types=position_types,
         minimum_salary=minimum_salary,
@@ -180,6 +189,13 @@ def load_preferences_from_yaml(path: str | Path) -> SearchPreferences:
     role = str(data.get("role") or DEFAULT_ROLE)
     location = str(data.get("location") or DEFAULT_LOCATION)
 
+    date_posted_raw = data.get("date_posted")
+    if date_posted_raw is None or not str(date_posted_raw).strip():
+        date_posted = DEFAULT_DATE_POSTED
+    else:
+        candidate = str(date_posted_raw).strip().lower()
+        date_posted = candidate if candidate in DATE_POSTED_CHOICES else DEFAULT_DATE_POSTED
+
     location_types = _normalize_choice_list(
         data.get("location_types"), LOCATION_TYPE_CHOICES
     )
@@ -205,6 +221,7 @@ def load_preferences_from_yaml(path: str | Path) -> SearchPreferences:
     return SearchPreferences(
         role=role,
         location=location,
+        date_posted=date_posted,
         location_types=location_types,
         position_types=position_types,
         minimum_salary=minimum_salary,

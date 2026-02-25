@@ -7,6 +7,7 @@
 # Fields:
 #   role             : Job title or role to search for.
 #   location         : Free-text location; empty means any location.
+#   date_posted      : API-level posting date filter: today, week, month, all.
 #   location_types   : Optional list; any of: on-site, hybrid, remote.
 #   position_types   : Optional list; any of: permanent, contract, freelance.
 #   minimum_salary   : Optional integer minimum salary; null = no filter.
@@ -18,6 +19,10 @@ role: "Android Developer"
 
 # Empty string means any location (no location restriction).
 location: ""
+
+# Posting date filter sent to the JSearch API.
+# Values: today (past 24 h), week (past week), month (past month), all (any time).
+date_posted: "today"
 
 # Examples:
 # location_types: ["remote"]

@@ -121,6 +121,7 @@ def _fetch_jsearch(api_key: str, prefs: SearchPreferences) -> dict:
         "query": query,
         "page": 1,
         "num_pages": 1,
+        "date_posted": prefs.date_posted,
     }
 
     country = _infer_country(prefs.location)
@@ -184,8 +185,8 @@ def fetch_jobs(prefs: SearchPreferences) -> tuple[dict, str, bool, bool]:
     used_cache = False
     api_called = False
 
-    # Try cache first (role + location); filters are applied later.
-    cached = load_cache(prefs.role, prefs.location)
+    # Try cache first (role + location + date_posted); filters are applied later.
+    cached = load_cache(prefs.role, prefs.location, prefs.date_posted)
     if cached is not None:
         raw = cached
         used_cache = True
@@ -207,7 +208,7 @@ def fetch_jobs(prefs: SearchPreferences) -> tuple[dict, str, bool, bool]:
                 print(f"Warning: Could not parse mock file: {e}")
                 raise SystemExit(1) from e
 
-        save_cache(prefs.role, prefs.location, raw)
+        save_cache(prefs.role, prefs.location, prefs.date_posted, raw)
 
     _save_raw_response(raw, _ensure_debug_dir(), timestamp)
     return raw, timestamp, used_cache, api_called
