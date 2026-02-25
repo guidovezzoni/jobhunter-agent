@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 CACHE_DIR = Path("debug/cache")
-CACHE_TTL = timedelta(minutes=60)
+CACHE_TTL = timedelta(hours=24)
 
 
 @dataclass

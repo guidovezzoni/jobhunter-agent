@@ -62,6 +62,10 @@ Or activate the venv and run `python main.py`. When prompted, enter role/locatio
 |----------|--------|
 | `RAPID_API_KEY` | JSearch API key (RapidAPI). If unset, mock file is used. |
 
+## Future features
+- Posting date filtering
+- Exclusions: companies blacklist
+
 ## Keeping this README updated
 
 When you add or change features (e.g. new data sources, CLI flags, env vars, or modules), update this README: **Setup**, **Run**, **Project structure**, and **Environment** so they stay accurate. See also `agents.md` for where to edit when extending the codebase.
