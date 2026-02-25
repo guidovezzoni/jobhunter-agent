@@ -1,5 +1,5 @@
-Version: JH4
-==============================
+List of main prompts used.
+==========================
 
 I would like to build a 'Job Hunter Agent' in Python, that searches the web and API and filters results according to specific criteria.
 
@@ -43,7 +43,28 @@ I'd like to be able to filter on these values:
     - job spec language (default english)
 The above values should be added to the initial request of values to the user: role and location will be used for the API call, the other values will be used for the following filtering.
 Also, the API call result should be cached and re-used for the following 60 minutes, if and only if role and location are the same, the following filtering should be performed every time instead.
-Finally, please update README.md and AGENTS.md and keep them updated when applying additional changes.
+Finally, update README.md and AGENTS.md accordingly.
 
 
 Please define the above workflow in plain language
+
+---
+
+Map this project to an “agent pattern”:
+- Planner: decides which steps to run.
+- Tools: web search call, filter logic, email generator.
+- Memory/config: user preferences so it feels personal.
+
+Finally, update README.md and AGENTS.md and keep them updated when applying additional changes.
+
+Please define the above workflow in plain language
+
+---
+
+Now I'd like to add a config.yaml file that provides the default criteria suggested to the user.
+Also, I'd like to have a command line switch to provide a yaml file as a parameter: when this happens no values should be requested to the user as they would be read from the yaml file.
+This way a can prepare different yaml for different searches and run them without having to tailor each search.
+Please create the default config.yaml file which will serve as a template for other customised yaml.
+Finally, update README.md and AGENTS.md accordingly.
+
+---

@@ -2,3 +2,7 @@ __pycache__
 .env*
 debug/*
 results/*
+
+# My custom files
+android*.yaml
+techlead*.yaml

@@ -1,0 +1,42 @@
+#
+# Default configuration for Job Hunter Agent.
+#
+# Copy this file and adjust values to create different searches, then run:
+#   python main.py --config path/to/your-config.yaml
+#
+# Fields:
+#   role             : Job title or role to search for.
+#   location         : Free-text location; empty means any location.
+#   location_types   : Optional list; any of: on-site, hybrid, remote.
+#   position_types   : Optional list; any of: permanent, contract, freelance.
+#   minimum_salary   : Optional integer minimum salary; null = no filter.
+#   industry_filter  : Optional free-text industry filter; null = no filter.
+#   language_filter  : Job spec language (e.g. "en", "any").
+#
+
+role: "Android Developer"
+
+# Empty string means any location (no location restriction).
+location: ""
+
+# Examples:
+# location_types: ["remote"]
+# location_types: ["on-site", "hybrid"]
+location_types: []
+
+# Examples:
+# position_types: ["permanent"]
+# position_types: ["contract", "freelance"]
+position_types: []
+
+# Examples:
+# minimum_salary: 60000
+# minimum_salary: null  # no minimum salary filter
+minimum_salary: null
+
+# Free-text filter applied to the detected industry, or null for no filter.
+industry_filter: null
+
+# "en" = English only, "any" = no language filtering, or any language code.
+language_filter: "en"
+

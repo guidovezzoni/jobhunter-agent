@@ -3,13 +3,14 @@
 Job Hunter Agent: search jobs by role/location, extract key info, and show tailored summaries.
 """
 
+import argparse
 import sys
 from pathlib import Path
 
 # Allow running from project root
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from src.config import collect_preferences
+from src.config import collect_preferences, load_preferences_from_yaml
 from src.data_source import fetch_jobs
 from src.normalize import normalize_response
 from src.extract import extract_all
@@ -18,9 +19,37 @@ from src.filtering import filter_jobs
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(
+        description=(
+            "Job Hunter Agent: search jobs by role/location, extract key info, "
+            "and show tailored summaries."
+        )
+    )
+    parser.add_argument(
+        "-c",
+        "--config",
+        dest="config_file",
+        metavar="PATH",
+        help=(
+            "YAML file with search preferences and filters. "
+            "When provided, no interactive prompts are shown."
+        ),
+    )
+    args = parser.parse_args()
+
     print("Job Hunter Agent")
     print("-" * 40)
-    prefs = collect_preferences()
+
+    if args.config_file:
+        try:
+            prefs = load_preferences_from_yaml(args.config_file)
+            print(f"Loaded preferences from '{args.config_file}'.")
+        except (OSError, ValueError) as e:
+            print(f"Error loading config file '{args.config_file}': {e}")
+            raise SystemExit(1) from e
+    else:
+        prefs = collect_preferences()
+
     print(f"Searching: role='{prefs.role}', location='{prefs.location or 'any'}'")
     print()
 
@@ -36,7 +65,10 @@ def main() -> None:
     filtered = filter_jobs(extracted, prefs)
 
     if not filtered:
-        print("No jobs matched your filters. Try relaxing them (e.g. remove minimum salary or broaden location/position type).")
+        print(
+            "No jobs matched your filters. Try relaxing them (e.g. remove minimum "
+            "salary or broaden location/position type)."
+        )
         return
 
     print(f"{len(filtered)} job(s) remain after filtering.")

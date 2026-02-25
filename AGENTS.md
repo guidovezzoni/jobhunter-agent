@@ -4,8 +4,8 @@ This file helps AI agents (and humans) understand the codebase and where to make
 
 ## Codebase layout
 
-- **Entry**: `main.py` – orchestrates the pipeline (preferences & filters → fetch or reuse cached data → normalize → extract → filter → summarize → export to `results/`). Exports always run (no user confirm). Add new pipeline steps here or call new modules from here.
-- **Config**: `src/config.py` – `SearchPreferences` and `collect_preferences()` for role/location plus post-fetch filters (location type(s), position type(s), minimum salary, industry, language). Add new user-facing options (e.g. extra filters, output format) here or in a dedicated config module.
+- **Entry**: `main.py` – orchestrates the pipeline (parses CLI args, preferences & filters → fetch or reuse cached data → normalize → extract → filter → summarize → export to `results/`). Exports always run (no user confirm). Add new pipeline steps here or call new modules from here.
+- **Config**: `src/config.py` – `SearchPreferences`, `collect_preferences()` for interactive role/location and post-fetch filters, and `load_preferences_from_yaml()` for YAML-based configurations (same fields as interactive mode). Add new user-facing options (e.g. extra filters, output format) here or in a dedicated config module.
 - **Data**: `src/data_source.py` – JSearch API vs mock file selection, basic location→country inference for the API call, optional mock-location filtering, cache use, and raw response save to `debug/api-response/<timestamp>_response.json`. Returns `(raw, timestamp)` so `main` can export to `results/<timestamp>_jobs.json` and `results/<timestamp>_jobs.csv` with the same timestamp. Add new job sources (other APIs, scrapers) here; keep the same contract: return (raw response dict, timestamp) and let `normalize`/`extract` stay source-agnostic.
 - **Cache**: `src/cache.py` – file-based cache of raw responses keyed by `(role, location)` with a 60-minute TTL. Change cache behavior here (e.g. TTL, key strategy).
 - **Normalize**: `src/normalize.py` – raw response → list of job dicts with consistent keys. When adding a new data source, either map its shape to the same keys here or add a source-specific normalizer and call it from `main.py`.
@@ -28,7 +28,7 @@ This file helps AI agents (and humans) understand the codebase and where to make
 | New job data source (API or scraper) | `src/data_source.py`; keep saving raw response under `debug/api-response/` with timestamp; add caching strategy in `src/cache.py` if needed |
 | New field to extract (e.g. benefits, posted date) | `src/extract.py` (`extract_job_info`, `_raw` excluded from export), then `src/summary.py` (`build_summary`, export columns if CSV/JSON) |
 | New output format (e.g. Markdown export) | `src/summary.py` and `main.py` (always exports to `results/` with run timestamp) |
-| New CLI flag or non-interactive mode | `main.py`, optionally `src/config.py` if parsing args |
+| New CLI flag or non-interactive mode | `main.py` (arg parsing / control flow), `src/config.py` if parsing from YAML or adding new preference fields |
 | Change in JSearch API params or response shape | `src/data_source.py` (request), `src/normalize.py` (keys from response), `src/cache.py` (if cache keys or TTL must change) |
 
 After making such changes, update **README.md** (and this **agents.md** if you add modules or change the layout) so the docs stay in sync.

@@ -4,9 +4,11 @@ A Python CLI that searches job boards via the JSearch API (or a mock response), 
 
 ## Workflow
 
-1. **Preferences & filters** – On launch you are prompted for:
-   - **Role** (default: "Android Developer") and **Location** (default: empty = any location), used to query jobs.
-   - Optional **filters** applied afterwards: location type(s) (`on-site`, `hybrid`, `remote`), position type(s) (`permanent`, `contract`, `freelance`), minimum salary, industry text, and job spec language (default `en`, or `any` for no language filter).
+1. **Preferences & filters** – On launch you can either:
+   - Run **interactively** and are prompted for:
+     - **Role** (default: "Android Developer") and **Location** (default: empty = any location), used to query jobs.
+     - Optional **filters** applied afterwards: location type(s) (`on-site`, `hybrid`, `remote`), position type(s) (`permanent`, `contract`, `freelance`), minimum salary, industry text, and job spec language (default `en`, or `any` for no language filter).
+   - Or run **non-interactively** by passing a YAML config file with all of the above fields.
 2. **Data source & caching** – If `RAPID_API_KEY` is set in `.env`, the app calls the JSearch RapidAPI using your role/location (with basic country inference for cities like London, Barcelona, Madrid). Otherwise it loads the mock response from `docs/RapidAPIResponse.txt` (Python-style or JSON). Raw responses are cached on disk per `(role, location)` for **60 minutes**, so repeated runs with the same role/location reuse the cached data instead of calling the API again.
 3. **Debug save** – The raw API/mock response for the current run is saved under `debug/api-response/` with a timestamped filename (e.g. `YYYYMMDD_HHMMSS_response.json`).
 4. **Extraction** – For each job the app derives: location type (on-site/hybrid/remote), position type (permanent/contract/freelance), minimum salary, industry, job ad language, tech stack, requirements, and job link.
@@ -39,12 +41,24 @@ From the project root:
 
 Or activate the venv and run `python main.py`. When prompted, enter role/location or press Enter for defaults. Results are always written to `results/` (no confirmation).
 
+To run non-interactively using a YAML config file (for example the provided `config.yaml` or a copy of it you have customised), use:
+
+```bash
+.venv/bin/python main.py --config config.yaml
+```
+
+You can keep multiple YAML files (e.g. `configs/android_remote.yaml`, `configs/backend_london.yaml`) and pass the desired one per run:
+
+```bash
+.venv/bin/python main.py --config configs/android_remote.yaml
+```
+
 ## Project structure
 
 | Path | Purpose |
 |------|--------|
-| `main.py` | Entry point: collects preferences and filters, fetches or reuses cached jobs, normalizes, extracts, filters, prints summaries, and exports results. |
-| `src/config.py` | Defines `SearchPreferences` and `collect_preferences()` for role, location, and all post-fetch filters. |
+| `main.py` | Entry point: parses CLI args (including optional `--config`), collects preferences and filters (interactively or from YAML), fetches or reuses cached jobs, normalizes, extracts, filters, prints summaries, and exports results. |
+| `src/config.py` | Defines `SearchPreferences`, `collect_preferences()` for role/location and all post-fetch filters, and `load_preferences_from_yaml()` for YAML-based configurations. |
 | `src/data_source.py` | Fetches from JSearch API or mock file, applies basic location handling, uses the cache, and saves the raw response to `debug/api-response/`. |
 | `src/cache.py` | Simple file-based cache of raw API/mock responses keyed by `(role, location)` with a 60-minute TTL. |
 | `src/normalize.py` | Converts raw response into a list of normalized job dicts. |
@@ -63,6 +77,7 @@ Or activate the venv and run `python main.py`. When prompted, enter role/locatio
 | `RAPID_API_KEY` | JSearch API key (RapidAPI). If unset, mock file is used. |
 
 ## Future features
+- Matching to my CV
 - Posting date filtering
 - Exclusions: companies blacklist
 

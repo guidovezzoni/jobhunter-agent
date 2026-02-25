@@ -1,7 +1,10 @@
 """User preferences for job search and post-fetch filtering."""
 
 from dataclasses import dataclass
-from typing import List, Optional
+from pathlib import Path
+from typing import Any, List, Mapping, Optional
+
+import yaml
 
 DEFAULT_ROLE = "Android Developer"
 DEFAULT_LOCATION = ""
@@ -38,6 +41,52 @@ def _parse_multi_choice(raw: str, valid: set[str]) -> list[str]:
         if p in valid and p not in selected:
             selected.append(p)
     return selected
+
+
+def _normalize_choice_list(value: Any, valid_choices: set[str]) -> list[str]:
+    """
+    Normalize a YAML-provided value into a list of valid lowercase strings.
+    Accepts a single string or a sequence of strings; ignores invalid entries.
+    """
+    if value is None:
+        return []
+    if isinstance(value, str):
+        candidates = [value]
+    else:
+        try:
+            candidates = list(value)
+        except TypeError:
+            return []
+    normalized: list[str] = []
+    for item in candidates:
+        if not isinstance(item, str):
+            continue
+        s = item.strip().lower()
+        if s and s in valid_choices and s not in normalized:
+            normalized.append(s)
+    return normalized
+
+
+def _coerce_minimum_salary(value: Any) -> Optional[int]:
+    """Coerce YAML value into an integer minimum salary, or None."""
+    if value is None:
+        return None
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, (int, float)):
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return None
+    if isinstance(value, str):
+        v = value.strip()
+        if not v:
+            return None
+        try:
+            return int(v)
+        except ValueError:
+            return None
+    return None
 
 
 def collect_preferences() -> SearchPreferences:
@@ -95,6 +144,67 @@ def collect_preferences() -> SearchPreferences:
     return SearchPreferences(
         role=role_input,
         location=location_input,
+        location_types=location_types,
+        position_types=position_types,
+        minimum_salary=minimum_salary,
+        industry_filter=industry_filter,
+        language_filter=language_filter,
+    )
+
+
+def load_preferences_from_yaml(path: str | Path) -> SearchPreferences:
+    """
+    Load search preferences and filters from a YAML file.
+
+    The YAML is expected to contain keys matching SearchPreferences fields, e.g.:
+
+        role: "Android Developer"
+        location: ""
+        location_types: ["remote"]
+        position_types: ["permanent"]
+        minimum_salary: 60000
+        industry_filter: "fintech"
+        language_filter: "en"
+
+    Missing keys fall back to the same defaults as interactive input.
+    """
+    file_path = Path(path)
+    if not file_path.exists():
+        raise FileNotFoundError(f"Config file not found: {file_path}")
+    with file_path.open("r", encoding="utf-8") as f:
+        data = yaml.safe_load(f) or {}
+
+    if not isinstance(data, Mapping):
+        raise ValueError("YAML config must define a mapping at the top level.")
+
+    role = str(data.get("role") or DEFAULT_ROLE)
+    location = str(data.get("location") or DEFAULT_LOCATION)
+
+    location_types = _normalize_choice_list(
+        data.get("location_types"), LOCATION_TYPE_CHOICES
+    )
+    position_types = _normalize_choice_list(
+        data.get("position_types"), POSITION_TYPE_CHOICES
+    )
+
+    minimum_salary = _coerce_minimum_salary(data.get("minimum_salary"))
+
+    industry_raw = data.get("industry_filter")
+    if industry_raw is None:
+        industry_filter: Optional[str] = None
+    else:
+        s = str(industry_raw).strip()
+        industry_filter = s or None
+
+    lang_raw = data.get("language_filter")
+    if lang_raw is None or not str(lang_raw).strip():
+        language_filter = "en"
+    else:
+        language_filter = str(lang_raw).strip().lower()
+
+    return SearchPreferences(
+        role=role,
+        location=location,
         location_types=location_types,
         position_types=position_types,
         minimum_salary=minimum_salary,
