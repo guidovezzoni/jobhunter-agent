@@ -113,8 +113,7 @@ def main() -> None:
         export_html(
             filtered,
             results_dir / f"{prefix}_jobs.html",
-            role=prefs.role,
-            location=prefs.location or "any",
+            prefs=prefs,
             timestamp=timestamp,
         )
         print(

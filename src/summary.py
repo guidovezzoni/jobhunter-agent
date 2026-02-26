@@ -82,14 +82,37 @@ def export_csv(extracted_list: list[dict[str, Any]], path: Path) -> None:
 def export_html(
     extracted_list: list[dict[str, Any]],
     path: Path,
-    role: str = "",
-    location: str = "",
+    prefs: Any = None,
     timestamp: str = "",
 ) -> None:
     """Export job results as a self-contained HTML page viewable in a browser."""
 
     def esc(value: object) -> str:
         return _html_module.escape(str(value)) if value is not None else ""
+
+    # Build search criteria rows (only show fields that were actually set)
+    role = (prefs.role if prefs else "") or ""
+    location = (prefs.location if prefs else "") or "any"
+
+    criteria_rows = f'<tr><th>Role</th><td>{esc(role) or "N/A"}</td></tr>'
+    criteria_rows += f'<tr><th>Location</th><td>{esc(location)}</td></tr>'
+
+    if prefs:
+        criteria_rows += f'<tr><th>Date posted</th><td>{esc(prefs.date_posted)}</td></tr>'
+        if prefs.europe_countries:
+            criteria_rows += (
+                f'<tr><th>Countries</th><td>{esc(", ".join(prefs.europe_countries).upper())}</td></tr>'
+            )
+        if prefs.location_types:
+            criteria_rows += f'<tr><th>Location type</th><td>{esc(", ".join(prefs.location_types))}</td></tr>'
+        if prefs.position_types:
+            criteria_rows += f'<tr><th>Position type</th><td>{esc(", ".join(prefs.position_types))}</td></tr>'
+        if prefs.minimum_salary is not None:
+            criteria_rows += f'<tr><th>Min. salary</th><td>{prefs.minimum_salary:,} (annual)</td></tr>'
+        if prefs.industry_filter:
+            criteria_rows += f'<tr><th>Industry</th><td>{esc(prefs.industry_filter)}</td></tr>'
+        if prefs.language_filter and prefs.language_filter != "any":
+            criteria_rows += f'<tr><th>Job ad language</th><td>{esc(prefs.language_filter)}</td></tr>'
 
     cards_html = ""
     for i, ex in enumerate(extracted_list):
@@ -161,7 +184,6 @@ def export_html(
         </div>
 """
 
-    header_location = esc(location) if location else "any"
     header_ts = esc(timestamp) if timestamp else ""
     total = len(extracted_list)
 
@@ -187,11 +209,34 @@ def export_html(
       font-size: 1.7rem;
       font-weight: 700;
       color: #1a1a2e;
+      margin-bottom: 1rem;
     }}
-    header p {{
-      margin-top: 0.35rem;
-      color: #555;
-      font-size: 0.9rem;
+    .criteria {{
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.08);
+      padding: 1rem 1.4rem;
+      margin-bottom: 0.75rem;
+    }}
+    .criteria table {{
+      border-collapse: collapse;
+      font-size: 0.88rem;
+    }}
+    .criteria th {{
+      text-align: left;
+      width: 140px;
+      padding: 0.22rem 0.6rem 0.22rem 0;
+      color: #666;
+      font-weight: 600;
+    }}
+    .criteria td {{
+      color: #222;
+      padding: 0.22rem 0;
+    }}
+    .run-meta {{
+      font-size: 0.8rem;
+      color: #888;
+      margin-top: 0.5rem;
     }}
     .cards {{
       max-width: 860px;
@@ -298,8 +343,12 @@ def export_html(
 <body>
   <header>
     <h1>Job results: {esc(role) or "N/A"}</h1>
-    <p>Location: {header_location} &nbsp;|&nbsp; {total} job(s) after filtering
-    {f" &nbsp;|&nbsp; Run: {header_ts}" if header_ts else ""}</p>
+    <div class="criteria">
+      <table>
+        {criteria_rows}
+      </table>
+    </div>
+    <div class="run-meta">{total} job(s) after filtering{f" &nbsp;·&nbsp; Run: {header_ts}" if header_ts else ""}</div>
   </header>
   <div class="cards">
     {cards_html}
