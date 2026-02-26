@@ -17,7 +17,7 @@ from src.cache import load_cache, save_cache
 load_dotenv()
 
 JSEARCH_URL = "https://jsearch.p.rapidapi.com/search"
-MOCK_PATH = Path("docs/RapidAPIResponse.txt")
+MOCK_PATH = Path("debug/mock/JSearchMockResponse.json")
 DEBUG_DIR = Path("debug/api-response")
 MAX_PAGES = 5  # Number of result pages to request per API call (10 results/page)
 
@@ -188,13 +188,22 @@ def _fetch_jsearch(api_key: str, prefs: SearchPreferences) -> dict:
 
 
 def _load_mock() -> dict:
-    """Load and parse mock response from docs/RapidAPIResponse.txt."""
+    """Load and parse mock response file.
+
+    Accepts either a raw API response (with a top-level 'data' key) or a
+    cache-format file (with a top-level 'raw_response' key); in the latter
+    case the inner raw_response dict is returned so downstream code always
+    receives the same shape.
+    """
     path = Path(MOCK_PATH)
     if not path.exists():
         raise FileNotFoundError(f"Mock file not found: {path}")
     with open(path, "r", encoding="utf-8") as f:
         content = f.read()
-    return _parse_mock_content(content)
+    parsed = _parse_mock_content(content)
+    if isinstance(parsed, dict) and "raw_response" in parsed:
+        return parsed["raw_response"]
+    return parsed
 
 
 def _job_matches_location(job: dict, location_query: str) -> bool:
@@ -268,7 +277,7 @@ def fetch_jobs(prefs: SearchPreferences) -> tuple[dict, str, bool, bool]:
             except FileNotFoundError as e:
                 print(
                     "Warning: RAPID_API_KEY is not set in .env and mock file "
-                    f"docs/RapidAPIResponse.txt is not present. {e}"
+                    f"{MOCK_PATH} is not present. {e}"
                 )
                 raise SystemExit(1) from e
             except ValueError as e:

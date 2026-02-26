@@ -1,6 +1,7 @@
 __pycache__
 .env*
-debug/*
+debug/api-response/*
+debug/cache/*
 results/*
 
 # My custom files
