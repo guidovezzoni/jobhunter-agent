@@ -103,50 +103,79 @@ def _coerce_minimum_salary(value: Any) -> Optional[int]:
     return None
 
 
-def collect_preferences() -> SearchPreferences:
+def collect_preferences(defaults: Optional["SearchPreferences"] = None) -> "SearchPreferences":
     """
     Prompt user for role/location (used for the API call and caching)
     and additional filters applied after fetching results.
+
+    When *defaults* is provided (e.g. loaded from config.yaml) its values are
+    shown in each prompt and accepted when the user presses Enter.
     """
+    # Resolve per-field defaults
+    default_role = (defaults.role if defaults and defaults.role else None) or DEFAULT_ROLE
+    default_location = defaults.location if defaults is not None else DEFAULT_LOCATION
+    default_date_posted = (defaults.date_posted if defaults and defaults.date_posted else None) or DEFAULT_DATE_POSTED
+    default_location_types: list[str] = defaults.location_types if defaults is not None else []
+    default_position_types: list[str] = defaults.position_types if defaults is not None else []
+    default_minimum_salary: Optional[int] = defaults.minimum_salary if defaults is not None else None
+    default_industry_filter: Optional[str] = defaults.industry_filter if defaults is not None else None
+    default_language_filter: str = (defaults.language_filter if defaults and defaults.language_filter else None) or "en"
+    default_europe_countries: list[str] = (
+        defaults.europe_countries if defaults and defaults.europe_countries else list(DEFAULT_EUROPE_COUNTRIES)
+    )
+
     # Core search parameters
-    role_input = input(f"Role [{DEFAULT_ROLE}]: ").strip() or DEFAULT_ROLE
+    role_input = input(f"Role [{default_role}]: ").strip() or default_role
     location_input = input(
         "Location (Barcelona, London, or leave empty for any location, "
-        f"'europe' will trigger a multi-country European search) [{DEFAULT_LOCATION}]: "
+        f"'europe' will trigger a multi-country European search) [{default_location}]: "
     ).strip()
+    if not location_input:
+        location_input = default_location
 
     # Multi-country Europe mode
     europe_countries: list[str] = []
     if location_input.lower() in EUROPE_LOCATION_TRIGGERS:
-        default_codes = ",".join(DEFAULT_EUROPE_COUNTRIES)
+        default_codes = ",".join(default_europe_countries)
         raw_countries = input(
             f"European country codes to search (comma-separated ISO codes) [{default_codes}]: "
         ).strip()
         if raw_countries:
             europe_countries = [c.strip().lower() for c in raw_countries.split(",") if c.strip()]
         else:
-            europe_countries = list(DEFAULT_EUROPE_COUNTRIES)
+            europe_countries = list(default_europe_countries)
 
     date_posted_raw = input(
-        "Posting date filter [today/week/month/all] (default today = past 24 h): "
+        f"Posting date filter [today/week/month/all] (default {default_date_posted}): "
     ).strip().lower()
-    date_posted = date_posted_raw if date_posted_raw in DATE_POSTED_CHOICES else DEFAULT_DATE_POSTED
+    date_posted = date_posted_raw if date_posted_raw in DATE_POSTED_CHOICES else default_date_posted
 
     # Filters
+    default_loc_types_str = ",".join(default_location_types) if default_location_types else ""
+    loc_types_hint = f" [{default_loc_types_str}]" if default_loc_types_str else ""
     loc_types_raw = input(
-        "Location types filter (comma-separated: on-site, hybrid, remote; "
-        "leave empty for no filtering): "
+        f"Location types filter (comma-separated: on-site, hybrid, remote; "
+        f"leave empty for no filtering){loc_types_hint}: "
     )
-    location_types = _parse_multi_choice(loc_types_raw, LOCATION_TYPE_CHOICES)
+    if loc_types_raw.strip():
+        location_types = _parse_multi_choice(loc_types_raw, LOCATION_TYPE_CHOICES)
+    else:
+        location_types = list(default_location_types)
 
+    default_pos_types_str = ",".join(default_position_types) if default_position_types else ""
+    pos_types_hint = f" [{default_pos_types_str}]" if default_pos_types_str else ""
     pos_types_raw = input(
-        "Position types filter (comma-separated: permanent, contract, freelance; "
-        "leave empty for no filtering): "
+        f"Position types filter (comma-separated: permanent, contract, freelance; "
+        f"leave empty for no filtering){pos_types_hint}: "
     )
-    position_types = _parse_multi_choice(pos_types_raw, POSITION_TYPE_CHOICES)
+    if pos_types_raw.strip():
+        position_types = _parse_multi_choice(pos_types_raw, POSITION_TYPE_CHOICES)
+    else:
+        position_types = list(default_position_types)
 
+    salary_hint = f" [{default_minimum_salary}]" if default_minimum_salary is not None else ""
     min_salary_raw = input(
-        "Minimum salary filter (number, leave empty for no minimum): "
+        f"Minimum salary filter (number, leave empty for no minimum){salary_hint}: "
     ).strip()
     minimum_salary: Optional[int]
     if min_salary_raw:
@@ -155,18 +184,19 @@ def collect_preferences() -> SearchPreferences:
         except ValueError:
             minimum_salary = None
     else:
-        minimum_salary = None
+        minimum_salary = default_minimum_salary
 
+    industry_hint = f" [{default_industry_filter}]" if default_industry_filter else ""
     industry_raw = input(
-        "Industry filter (free text, leave empty for no filtering): "
+        f"Industry filter (free text, leave empty for no filtering){industry_hint}: "
     ).strip()
-    industry_filter = industry_raw or None
+    industry_filter = industry_raw if industry_raw else default_industry_filter
 
     lang_raw = input(
-        "Job spec language filter [en/any] (default en = English only): "
+        f"Job spec language filter [en/any] (default {default_language_filter}): "
     ).strip().lower()
     if not lang_raw:
-        language_filter = "en"
+        language_filter = default_language_filter
     elif lang_raw in {"en", "any"}:
         language_filter = lang_raw
     else:

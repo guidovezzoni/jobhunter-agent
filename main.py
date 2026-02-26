@@ -11,6 +11,8 @@ from pathlib import Path
 # Allow running from project root
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+_DEFAULT_CONFIG = Path(__file__).resolve().parent / "config.yaml"
+
 from src.config import collect_preferences, load_preferences_from_yaml
 from src.data_source import fetch_jobs
 from src.normalize import normalize_response
@@ -63,7 +65,13 @@ def main() -> None:
             print(f"Error loading config file '{args.config_file}': {e}")
             raise SystemExit(1) from e
     else:
-        prefs = collect_preferences()
+        yaml_defaults = None
+        if _DEFAULT_CONFIG.exists():
+            try:
+                yaml_defaults = load_preferences_from_yaml(_DEFAULT_CONFIG)
+            except (OSError, ValueError):
+                pass
+        prefs = collect_preferences(defaults=yaml_defaults)
 
     print(f"Searching: role='{prefs.role}', location='{prefs.location or 'any'}'")
     print()

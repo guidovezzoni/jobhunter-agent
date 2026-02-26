@@ -24,42 +24,16 @@
 #                      Omit this key to use the built-in default: [gb, es, pt].
 #
 
-role: "Android Developer"
+role: "Tech Lead"
 
 # Empty string means any location (no location restriction).
 # Use "europe", "eu", or "european economic area" for multi-country EU search.
-location: ""
-
-# Posting date filter sent to the JSearch API.
-# Values: today (past 24 h), week (past week), month (past month), all (any time).
-date_posted: "today"
-
-# Examples:
-# location_types: ["remote"]
-# location_types: ["on-site", "hybrid"]
-location_types: []
-
-# Examples:
-# position_types: ["permanent"]
-# position_types: ["contract", "freelance"]
-position_types: []
-
-# Examples:
-# minimum_salary: 60000
-# minimum_salary: null  # no minimum salary filter
-minimum_salary: null
-
-# Free-text filter applied to the detected industry, or null for no filter.
-industry_filter: null
-
-# "en" = English only, "any" = no language filtering, or any language code.
-language_filter: "en"
+location: "Europe"
 
 # Countries to search when location is "europe" / "eu" / "european economic area".
-# Default (when this key is absent): [gb, es, pt]
 # Each country code triggers one additional set of API calls, so extending
 # this list will consume API quota proportionally.
-europe_countries: [gb, es, pt]
+europe_countries: []
 
 # Full European country list (NOT recommended on free-tier — hits quota fast):
 # europe_countries: [
@@ -94,3 +68,29 @@ europe_countries: [gb, es, pt]
 #   cy,  # Cyprus
 #   gr,  # Greece
 # ]
+
+# Posting date filter sent to the JSearch API.
+# Values: today (past 24 h), week (past week), month (past month), all (any time).
+date_posted: "week"
+
+# Examples:
+# location_types: ["on-site"]
+# location_types: ["remote", "hybrid"]
+location_types: ["remote", "hybrid"]
+
+# Examples:
+# position_types: ["permanent"]
+# position_types: ["contract", "freelance"]
+position_types: []
+
+# Examples:
+# minimum_salary: 60000
+# minimum_salary: null  # no minimum salary filter
+minimum_salary: null
+
+# Free-text filter applied to the detected industry, or null for no filter.
+industry_filter: null
+
+# "en" = English only, "any" = no language filtering, or any language code.
+language_filter: "en"
+
