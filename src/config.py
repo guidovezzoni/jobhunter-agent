@@ -243,16 +243,17 @@ def load_preferences_from_yaml(path: str | Path) -> SearchPreferences:
     else:
         language_filter = str(lang_raw).strip().lower()
 
-    # Europe multi-country: read explicit list or fall back to default when
-    # location is a recognised Europe trigger.
-    europe_countries_raw = data.get("europe_countries")
-    if europe_countries_raw is not None:
-        try:
-            europe_countries = [str(c).strip().lower() for c in list(europe_countries_raw) if str(c).strip()]
-        except TypeError:
-            europe_countries = []
-    elif location.lower() in EUROPE_LOCATION_TRIGGERS:
-        europe_countries = list(DEFAULT_EUROPE_COUNTRIES)
+    # Europe multi-country: only active when the location matches a recognised
+    # trigger; the europe_countries key is only consulted in that case.
+    if location.lower() in EUROPE_LOCATION_TRIGGERS:
+        europe_countries_raw = data.get("europe_countries")
+        if europe_countries_raw is not None:
+            try:
+                europe_countries = [str(c).strip().lower() for c in list(europe_countries_raw) if str(c).strip()]
+            except TypeError:
+                europe_countries = list(DEFAULT_EUROPE_COUNTRIES)
+        else:
+            europe_countries = list(DEFAULT_EUROPE_COUNTRIES)
     else:
         europe_countries = []
 
