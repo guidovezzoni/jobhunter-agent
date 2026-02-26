@@ -113,3 +113,18 @@ Finally, update README.md and AGENTS.md accordingly.
 
 ---
 
+I would like to add a new feature: a new field in the config.yml called output. It will have these possible values:
+- CSV: which will controll the csv generation
+- JSON: which will controll the json generation
+- HTML: which will controll the html generation
+- HTML_LAUNCH: which will generate the html and launch it, so it'll be opened in a new browser window
+- CSV_LAUNCH: which will generate the csv and launch it, so it'll be opened in the operating system
+- JSON_LAUNCH: which will generate the json and launch it, so it'll be opened in the operating system
+Multiple values are OK, no value is not admitted: we should stop the execution and warn the user if this happen.
+
+Please add some comments in the config.yml to explain all of this.
+This field will not be requested in interactive mode, it will simply use the default in config.yaml
+Finally, update README.md and AGENTS.md accordingly.
+
+---
+

@@ -1,6 +1,6 @@
 # Job Hunter Agent
 
-A Python CLI that searches job boards via the JSearch API, extracts key job fields, and prints tailored summaries. You can optionally export results to JSON, CSV, or HTML (browser-viewable).
+A Python CLI that searches job boards via the JSearch API, extracts key job fields, and prints tailored summaries. Exports to JSON, CSV, or HTML (browser-viewable) are controlled by the `output` setting in your YAML config.
 
 ## Workflow
 
@@ -14,7 +14,7 @@ A Python CLI that searches job boards via the JSearch API, extracts key job fiel
 2. **Data source & caching** – If `RAPID_API_KEY` is set in `.env`, the app calls the JSearch RapidAPI using your role, location, and posting-date filter (with basic country inference for cities like London, Barcelona, Madrid). Otherwise it loads the mock response from `docs/RapidAPIResponse.txt` (Python-style or JSON). Raw responses are cached on disk per `(role, location, date_posted)` for **60 minutes**, so repeated runs with the same parameters reuse the cached data instead of calling the API again.
 3. **Debug save** – The raw API/mock response for the current run is saved under `debug/api-response/` with a timestamped filename (e.g. `YYYYMMDD_HHMMSS_response.json`).
 4. **Extraction** – For each job the app derives: location type (on-site/hybrid/remote), position type (permanent/contract/freelance), minimum salary, industry, job ad language, tech stack, requirements, and job link.
-5. **Filtering & summary** – The extracted jobs are filtered according to your chosen filters. A short summary per remaining job is printed to the console. Results are always exported to the `results/` folder using the same timestamp as the debug file (e.g. `results/YYYYMMDD_HHMMSS_jobs.json`, `results/YYYYMMDD_HHMMSS_jobs.csv`, and `results/YYYYMMDD_HHMMSS_jobs.html`), so you can match them to the raw response in `debug/api-response/`. The HTML file is self-contained (no external dependencies) and can be opened directly in any browser for an easy-to-read, card-based view of the results.
+5. **Filtering & summary** – The extracted jobs are filtered according to your chosen filters. A short summary per remaining job is printed to the console. Results are exported to the `results/` folder using the same timestamp as the debug file (e.g. `results/YYYYMMDD_HHMMSS_jobs.json`, `results/YYYYMMDD_HHMMSS_jobs.csv`, and `results/YYYYMMDD_HHMMSS_jobs.html` when enabled via `output`), so you can match them to the raw response in `debug/api-response/`. The HTML file is self-contained (no external dependencies) and can be opened directly in any browser for an easy-to-read, card-based view of the results. Launch modes in `output` (e.g. `HTML_LAUNCH`, `CSV_LAUNCH`, `JSON_LAUNCH`) will also open the corresponding file automatically after export.
 
 ## Setup
 
@@ -41,7 +41,7 @@ From the project root:
 .venv/bin/python main.py
 ```
 
-Or activate the venv and run `python main.py`. When prompted, enter role/location or press Enter for defaults. Results are always written to `results/` (no confirmation).
+Or activate the venv and run `python main.py`. When prompted, enter role/location or press Enter for defaults. Results are written to `results/` according to the configured `output` modes (no confirmation).
 
 To run non-interactively using a YAML config file (for example the provided `config.yaml` or a copy of it you have customised), use:
 
@@ -77,14 +77,14 @@ The merged results are cached as a single entry keyed by `(role, location, sorte
 
 | Path | Purpose |
 |------|--------|
-| `main.py` | Entry point: parses CLI args (including optional `--config`), collects preferences and filters (interactively or from YAML), fetches or reuses cached jobs, normalizes, extracts, filters, prints summaries, and exports results. |
-| `src/config.py` | Defines `SearchPreferences`, `EUROPE_LOCATION_TRIGGERS`, `DEFAULT_EUROPE_COUNTRIES`, `collect_preferences()` for role/location and all post-fetch filters, and `load_preferences_from_yaml()` for YAML-based configurations. |
+| `main.py` | Entry point: parses CLI args (including optional `--config`), collects preferences and filters (interactively or from YAML), fetches or reuses cached jobs, normalizes, extracts, filters, prints summaries, and exports results based on the configured `output` modes. |
+| `src/config.py` | Defines `SearchPreferences`, `EUROPE_LOCATION_TRIGGERS`, `DEFAULT_EUROPE_COUNTRIES`, `collect_preferences()` for role/location and all post-fetch filters, and `load_preferences_from_yaml()` for YAML-based configurations, plus the `output` configuration that controls which exports run and whether they auto-launch. |
 | `src/data_source.py` | Fetches from JSearch API or mock file. In multi-country mode calls `_fetch_jsearch_multi_country()` which loops over `europe_countries`, merges and deduplicates results. Applies basic country inference for single-location searches. Saves raw response to `debug/api-response/`. |
 | `src/cache.py` | Simple file-based cache of raw API/mock responses keyed by `(role, location, date_posted)` (plus sorted country codes in multi-country mode) with a 60-minute TTL. |
 | `src/normalize.py` | Converts raw response into a list of normalized job dicts. |
 | `src/extract.py` | Extracts location type, position type, salary, industry, language, tech stack, requirements, job link, and `job_country`. |
 | `src/filtering.py` | Applies user-selected filters (location type, position type, minimum salary, industry, language) to the extracted jobs. |
-| `src/summary.py` | Builds per-job summary text and exports (JSON, CSV, HTML). |
+| `src/summary.py` | Builds per-job summary text and exports (JSON, CSV, HTML); the export helpers are called conditionally based on the `output` modes. |
 | `docs/RapidAPIResponse.txt` | Mock JSearch response (used when no API key). |
 | `debug/api-response/` | Timestamped raw API responses (`YYYYMMDD_HHMMSS_response.json`). |
 | `debug/cache/` | Cache files storing raw responses per `(role, location[_countries], date_posted)`. |

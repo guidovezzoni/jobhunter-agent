@@ -21,13 +21,26 @@
 #                      location is a Europe trigger. Each code causes one
 #                      additional API call (pages × countries API requests
 #                      total), so keep this list short on free-tier plans.
+#   output           : List of export modes controlling which result files are
+#                      generated and optionally auto-launched. Allowed values:
+#                        CSV          – generate the CSV file
+#                        JSON         – generate the JSON file
+#                        HTML         – generate the HTML file
+#                        CSV_LAUNCH   – generate the CSV file and open it with
+#                                       the default app for .csv files
+#                        JSON_LAUNCH  – generate the JSON file and open it with
+#                                       the default app for .json files
+#                        HTML_LAUNCH  – generate the HTML file and open it in
+#                                       your default browser
+#                      Multiple values are allowed; the list must not be empty
+#                      or the run will abort with an error.
 #
 
-role: "Tech Lead"
+role: "Android Developer"
 
 # Empty string means any location (no location restriction).
 # Use "europe", "eu", or "european economic area" for multi-country EU search.
-location: "Europe"
+location: "London"
 
 # Countries to search when location is "europe" / "eu" / "european economic area".
 # Each country code triggers one additional set of API calls, so extending
@@ -75,7 +88,7 @@ date_posted: "week"
 # Examples:
 # location_types: ["on-site"]
 # location_types: ["remote", "hybrid"]
-location_types: ["remote", "hybrid"]
+location_types: []
 
 # Examples:
 # position_types: ["permanent"]
@@ -93,3 +106,12 @@ industry_filter: null
 # "en" = English only, "any" = no language filtering, or any language code.
 language_filter: "en"
 
+# Export modes: which result files to generate and whether to auto-open them.
+# The defaults for your runs are whatever you configure here; if this list
+# ends up empty (or all values are invalid), the program will abort before
+# calling the API and ask you to set at least one valid mode.
+# Examples:
+#   output: [CSV, JSON, HTML]                # generate all, do not auto-open
+#   output: [HTML_LAUNCH]                    # only HTML, open in browser
+#   output: [CSV, JSON_LAUNCH, HTML_LAUNCH]  # CSV+JSON+HTML, auto-open JSON+HTML
+output: [HTML_LAUNCH]

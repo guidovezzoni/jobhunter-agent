@@ -14,6 +14,17 @@ LOCATION_TYPE_CHOICES = {"on-site", "hybrid", "remote"}
 POSITION_TYPE_CHOICES = {"permanent", "contract", "freelance"}
 DATE_POSTED_CHOICES = {"today", "week", "month", "all"}
 
+# Output configuration: which result formats to generate and whether to auto-launch them.
+# Values are case-insensitive in YAML and normalised to these uppercase forms.
+OUTPUT_CHOICES: set[str] = {
+    "CSV",
+    "JSON",
+    "HTML",
+    "CSV_LAUNCH",
+    "JSON_LAUNCH",
+    "HTML_LAUNCH",
+}
+
 # Location strings that trigger multi-country European search mode.
 EUROPE_LOCATION_TRIGGERS: frozenset[str] = frozenset(
     {"europe", "eu", "european economic area"}
@@ -36,6 +47,13 @@ class SearchPreferences:
     minimum_salary: Optional[int]
     industry_filter: Optional[str]
     language_filter: str  # e.g. "en" or "any"
+
+    # Output formats to generate and optionally auto-launch.
+    # Valid values (case-insensitive in YAML, stored uppercase) are:
+    # CSV, JSON, HTML, CSV_LAUNCH, JSON_LAUNCH, HTML_LAUNCH.
+    # This list is expected to be provided via YAML; when it ends up empty the
+    # program aborts before calling the API.
+    output: List[str] = field(default_factory=list)
 
     # Non-empty when location is a Europe trigger; each entry is a 2-letter
     # ISO country code passed individually to the API (one call per country).
@@ -103,6 +121,39 @@ def _coerce_minimum_salary(value: Any) -> Optional[int]:
     return None
 
 
+def _normalize_output_list(value: Any) -> list[str]:
+    """
+    Normalise YAML-provided output configuration into a list of valid modes.
+
+    Accepts a single string or a sequence of strings. Values are stripped,
+    uppercased, deduplicated (preserving order), and only kept when they are
+    recognised entries in OUTPUT_CHOICES.
+    """
+    if value is None:
+        return []
+    if isinstance(value, str):
+        candidates = [value]
+    else:
+        try:
+            candidates = list(value)
+        except TypeError:
+            return []
+
+    seen: set[str] = set()
+    normalized: list[str] = []
+    for item in candidates:
+        if not isinstance(item, str):
+            continue
+        s = item.strip()
+        if not s:
+            continue
+        u = s.upper()
+        if u in OUTPUT_CHOICES and u not in seen:
+            seen.add(u)
+            normalized.append(u)
+    return normalized
+
+
 def collect_preferences(defaults: Optional["SearchPreferences"] = None) -> "SearchPreferences":
     """
     Prompt user for role/location (used for the API call and caching)
@@ -123,6 +174,7 @@ def collect_preferences(defaults: Optional["SearchPreferences"] = None) -> "Sear
     default_europe_countries: list[str] = (
         list(defaults.europe_countries) if defaults is not None else list(DEFAULT_EUROPE_COUNTRIES)
     )
+    default_output: list[str] = list(defaults.output) if defaults is not None else []
 
     # Core search parameters
     role_input = input(f"Role [{default_role}]: ").strip() or default_role
@@ -214,6 +266,7 @@ def collect_preferences(defaults: Optional["SearchPreferences"] = None) -> "Sear
         industry_filter=industry_filter,
         language_filter=language_filter,
         europe_countries=europe_countries,
+        output=default_output,
     )
 
 
@@ -274,6 +327,14 @@ def load_preferences_from_yaml(path: str | Path) -> SearchPreferences:
     else:
         language_filter = str(lang_raw).strip().lower()
 
+    output_raw = data.get("output")
+    if output_raw is None:
+        # No default at code level: when this ends up empty the application
+        # will abort early with a clear error message.
+        output = []
+    else:
+        output = _normalize_output_list(output_raw)
+
     # Europe multi-country: only active when the location matches a recognised
     # trigger; the europe_countries key is only consulted in that case.
     if location.lower() in EUROPE_LOCATION_TRIGGERS:
@@ -298,4 +359,5 @@ def load_preferences_from_yaml(path: str | Path) -> SearchPreferences:
         industry_filter=industry_filter,
         language_filter=language_filter,
         europe_countries=europe_countries,
+        output=output,
     )
