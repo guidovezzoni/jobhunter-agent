@@ -21,7 +21,6 @@
 #                      location is a Europe trigger. Each code causes one
 #                      additional API call (pages × countries API requests
 #                      total), so keep this list short on free-tier plans.
-#                      Omit this key to use the built-in default: [gb, es, pt].
 #
 
 role: "Tech Lead"
@@ -33,7 +32,7 @@ location: "Europe"
 # Countries to search when location is "europe" / "eu" / "european economic area".
 # Each country code triggers one additional set of API calls, so extending
 # this list will consume API quota proportionally.
-europe_countries: []
+europe_countries: [gb, es, pt]
 
 # Full European country list (NOT recommended on free-tier — hits quota fast):
 # europe_countries: [

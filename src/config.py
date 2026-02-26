@@ -121,7 +121,7 @@ def collect_preferences(defaults: Optional["SearchPreferences"] = None) -> "Sear
     default_industry_filter: Optional[str] = defaults.industry_filter if defaults is not None else None
     default_language_filter: str = (defaults.language_filter if defaults and defaults.language_filter else None) or "en"
     default_europe_countries: list[str] = (
-        defaults.europe_countries if defaults and defaults.europe_countries else list(DEFAULT_EUROPE_COUNTRIES)
+        list(defaults.europe_countries) if defaults is not None else list(DEFAULT_EUROPE_COUNTRIES)
     )
 
     # Core search parameters
@@ -137,8 +137,9 @@ def collect_preferences(defaults: Optional["SearchPreferences"] = None) -> "Sear
     europe_countries: list[str] = []
     if location_input.lower() in EUROPE_LOCATION_TRIGGERS:
         default_codes = ",".join(default_europe_countries)
+        codes_hint = f" [{default_codes}]" if default_codes else " [none]"
         raw_countries = input(
-            f"European country codes to search (comma-separated ISO codes) [{default_codes}]: "
+            f"European country codes to search (comma-separated ISO codes){codes_hint}: "
         ).strip()
         if raw_countries:
             europe_countries = [c.strip().lower() for c in raw_countries.split(",") if c.strip()]

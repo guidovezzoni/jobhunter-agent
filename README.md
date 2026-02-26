@@ -6,9 +6,10 @@ A Python CLI that searches job boards via the JSearch API, extracts key job fiel
 
 1. **Preferences & filters** – On launch you can either:
    - Run **interactively** and are prompted for:
-     - **Role** (default: "Android Developer") and **Location** (default: empty = any location), used to query jobs. Enter `europe`, `eu`, or `european economic area` to search across multiple European countries (see below).
-     - **Posting date** (`today` / `week` / `month` / `all`, default `today`) – sent directly to the API to limit results to jobs posted within that window.
-     - Optional **filters** applied afterwards: location type(s) (`on-site`, `hybrid`, `remote`), position type(s) (`permanent`, `contract`, `freelance`), minimum salary, industry text, and job spec language (default `en`, or `any` for no language filter).
+     - **Role** and **Location**, used to query jobs. Enter `europe`, `eu`, or `european economic area` to search across multiple European countries (see below).
+     - **Posting date** (`today` / `week` / `month` / `all`) – sent directly to the API to limit results to jobs posted within that window.
+     - Optional **filters** applied afterwards: location type(s) (`on-site`, `hybrid`, `remote`), position type(s) (`permanent`, `contract`, `freelance`), minimum salary, industry text, and job spec language (`en`, `any`, or another language code).
+     - **Defaults for every prompt are sourced from `config.yaml`** (if it exists in the project root). Press Enter at any prompt to accept the current default. To change the defaults permanently, edit `config.yaml`.
    - Or run **non-interactively** by passing a YAML config file with all of the above fields.
 2. **Data source & caching** – If `RAPID_API_KEY` is set in `.env`, the app calls the JSearch RapidAPI using your role, location, and posting-date filter (with basic country inference for cities like London, Barcelona, Madrid). Otherwise it loads the mock response from `docs/RapidAPIResponse.txt` (Python-style or JSON). Raw responses are cached on disk per `(role, location, date_posted)` for **60 minutes**, so repeated runs with the same parameters reuse the cached data instead of calling the API again.
 3. **Debug save** – The raw API/mock response for the current run is saved under `debug/api-response/` with a timestamped filename (e.g. `YYYYMMDD_HHMMSS_response.json`).
@@ -58,7 +59,7 @@ You can keep multiple YAML files (e.g. `configs/android_remote.yaml`, `configs/b
 
 Setting location to `europe`, `eu`, or `european economic area` (case-insensitive) activates multi-country mode. Instead of a single API call, the app makes one call per country in a configurable list, then merges and deduplicates results before the rest of the pipeline runs.
 
-**Default countries:** `gb`, `es`, `pt`. Override via the `europe_countries` key in YAML or interactively at the prompt.
+**Default countries** are taken from the `europe_countries` list in `config.yaml`. Override the list there, pass a custom YAML with `--config`, or enter different codes at the interactive prompt. Setting `europe_countries: []` leaves the default empty; if no country codes end up being provided, the run is aborted with an error.
 
 ```yaml
 role: "Android Developer"
@@ -68,7 +69,7 @@ location_types: ["remote"]
 europe_countries: [gb, es, pt, de, nl]
 ```
 
-> **API quota note:** each country in the list triggers `MAX_PAGES` (default 5) API requests. With the default 3-country list that is 15 requests per run. Extending the list to all ~30 European countries would require ~150 requests — not recommended on the free tier (200 requests/month).
+> **API quota note:** each country in the list triggers `MAX_PAGES` (default 5) API requests, so a 3-country list costs 15 requests per run. Extending the list to all ~30 European countries would require ~150 requests — not recommended on the free tier (200 requests/month).
 
 The merged results are cached as a single entry keyed by `(role, location, sorted_country_codes, date_posted)`. Changing the country list automatically busts the cache.
 
