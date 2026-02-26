@@ -1,6 +1,7 @@
 """Generate tailored job summaries and output (console, optional export)."""
 
 import csv
+import html as _html_module
 import json
 from pathlib import Path
 from typing import Any
@@ -76,3 +77,237 @@ def export_csv(extracted_list: list[dict[str, Any]], path: Path) -> None:
             if isinstance(row.get("requirements"), list):
                 row["requirements"] = "; ".join(str(x)[:100] for x in row["requirements"]) if row["requirements"] else ""
             w.writerow(row)
+
+
+def export_html(
+    extracted_list: list[dict[str, Any]],
+    path: Path,
+    role: str = "",
+    location: str = "",
+    timestamp: str = "",
+) -> None:
+    """Export job results as a self-contained HTML page viewable in a browser."""
+
+    def esc(value: object) -> str:
+        return _html_module.escape(str(value)) if value is not None else ""
+
+    cards_html = ""
+    for i, ex in enumerate(extracted_list):
+        min_sal = ex.get("minimum_salary")
+        salary_row = (
+            f'<tr><th>Min. salary</th><td>{min_sal:,} (annual)</td></tr>'
+            if min_sal is not None
+            else ""
+        )
+
+        industry = ex.get("industry") or ""
+        industry_row = (
+            f'<tr><th>Industry</th><td>{esc(industry)}</td></tr>' if industry else ""
+        )
+
+        lang = ex.get("job_spec_language") or ""
+        lang_row = (
+            f'<tr><th>Job ad language</th><td>{esc(lang)}</td></tr>'
+            if lang and lang != "not defined"
+            else ""
+        )
+
+        tech = ex.get("tech_stack") or []
+        tech_tags = "".join(f'<span class="tag">{esc(t)}</span>' for t in tech)
+        tech_row = (
+            f'<tr><th>Tech stack</th><td class="tags">{tech_tags}</td></tr>'
+            if tech
+            else ""
+        )
+
+        reqs = ex.get("requirements") or []
+        req_items = "".join(
+            f"<li>{esc(r[:200])}{'…' if len(r) > 200 else ''}</li>"
+            for r in reqs[:8]
+        )
+        req_block = (
+            f'<div class="reqs"><strong>Key requirements</strong><ul>{req_items}</ul></div>'
+            if req_items
+            else ""
+        )
+
+        link = ex.get("job_link") or ""
+        apply_btn = (
+            f'<a class="apply-btn" href="{esc(link)}" target="_blank" rel="noopener">Apply</a>'
+            if link
+            else ""
+        )
+
+        cards_html += f"""
+        <div class="card">
+          <div class="card-header">
+            <span class="job-num">#{i + 1}</span>
+            <div>
+              <div class="job-title">{esc(ex.get("role", "N/A"))}</div>
+              <div class="company">{esc(ex.get("employer_name", "N/A"))}</div>
+            </div>
+          </div>
+          <table class="meta">
+            <tr><th>Location</th><td>{esc(ex.get("location") or "Not specified")}</td></tr>
+            <tr><th>Location type</th><td>{esc(ex.get("location_type", "not defined"))}</td></tr>
+            <tr><th>Position type</th><td>{esc(ex.get("position_type", "not defined"))}</td></tr>
+            {salary_row}
+            {industry_row}
+            {lang_row}
+            {tech_row}
+          </table>
+          {req_block}
+          {apply_btn}
+        </div>
+"""
+
+    header_location = esc(location) if location else "any"
+    header_ts = esc(timestamp) if timestamp else ""
+    total = len(extracted_list)
+
+    html_page = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Job results — {esc(role)}</title>
+  <style>
+    *, *::before, *::after {{ box-sizing: border-box; margin: 0; padding: 0; }}
+    body {{
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #f4f6f9;
+      color: #222;
+      padding: 2rem 1rem;
+    }}
+    header {{
+      max-width: 860px;
+      margin: 0 auto 2rem;
+    }}
+    header h1 {{
+      font-size: 1.7rem;
+      font-weight: 700;
+      color: #1a1a2e;
+    }}
+    header p {{
+      margin-top: 0.35rem;
+      color: #555;
+      font-size: 0.9rem;
+    }}
+    .cards {{
+      max-width: 860px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }}
+    .card {{
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.08);
+      padding: 1.4rem 1.6rem;
+    }}
+    .card-header {{
+      display: flex;
+      align-items: flex-start;
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }}
+    .job-num {{
+      background: #e8edf5;
+      color: #3a5a8c;
+      font-weight: 700;
+      font-size: 0.8rem;
+      padding: 0.25rem 0.55rem;
+      border-radius: 6px;
+      white-space: nowrap;
+      margin-top: 0.2rem;
+    }}
+    .job-title {{
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: #1a1a2e;
+    }}
+    .company {{
+      font-size: 0.95rem;
+      color: #555;
+      margin-top: 0.15rem;
+    }}
+    table.meta {{
+      border-collapse: collapse;
+      width: 100%;
+      font-size: 0.88rem;
+      margin-bottom: 0.9rem;
+    }}
+    table.meta th {{
+      text-align: left;
+      width: 140px;
+      padding: 0.28rem 0.5rem 0.28rem 0;
+      color: #666;
+      font-weight: 600;
+      vertical-align: top;
+    }}
+    table.meta td {{
+      padding: 0.28rem 0;
+      color: #333;
+      vertical-align: top;
+    }}
+    td.tags {{ display: flex; flex-wrap: wrap; gap: 0.35rem; }}
+    .tag {{
+      background: #e8f0fe;
+      color: #2a5aad;
+      font-size: 0.78rem;
+      padding: 0.18rem 0.55rem;
+      border-radius: 20px;
+      font-weight: 500;
+    }}
+    .reqs {{
+      font-size: 0.88rem;
+      margin-bottom: 1rem;
+    }}
+    .reqs strong {{
+      display: block;
+      margin-bottom: 0.4rem;
+      color: #444;
+    }}
+    .reqs ul {{
+      padding-left: 1.2rem;
+      color: #333;
+    }}
+    .reqs li {{ margin-bottom: 0.25rem; line-height: 1.45; }}
+    .apply-btn {{
+      display: inline-block;
+      background: #2a5aad;
+      color: #fff;
+      text-decoration: none;
+      padding: 0.45rem 1.1rem;
+      border-radius: 7px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      transition: background 0.15s;
+    }}
+    .apply-btn:hover {{ background: #1e4080; }}
+    footer {{
+      max-width: 860px;
+      margin: 2rem auto 0;
+      font-size: 0.8rem;
+      color: #999;
+      text-align: center;
+    }}
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Job results: {esc(role) or "N/A"}</h1>
+    <p>Location: {header_location} &nbsp;|&nbsp; {total} job(s) after filtering
+    {f" &nbsp;|&nbsp; Run: {header_ts}" if header_ts else ""}</p>
+  </header>
+  <div class="cards">
+    {cards_html}
+  </div>
+  <footer>Generated by Job Hunter Agent</footer>
+</body>
+</html>
+"""
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(html_page, encoding="utf-8")

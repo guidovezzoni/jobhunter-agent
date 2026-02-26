@@ -15,7 +15,7 @@ from src.config import collect_preferences, load_preferences_from_yaml
 from src.data_source import fetch_jobs
 from src.normalize import normalize_response
 from src.extract import extract_all
-from src.summary import print_summaries, export_json, export_csv
+from src.summary import print_summaries, export_json, export_csv, export_html
 from src.filtering import filter_jobs
 
 
@@ -110,8 +110,16 @@ def main() -> None:
         prefix = f"{_slug(prefs.role)}-{location_slug}-{_slug(prefs.date_posted)}-{timestamp}"
         export_json(filtered, results_dir / f"{prefix}_jobs.json")
         export_csv(filtered, results_dir / f"{prefix}_jobs.csv")
+        export_html(
+            filtered,
+            results_dir / f"{prefix}_jobs.html",
+            role=prefs.role,
+            location=prefs.location or "any",
+            timestamp=timestamp,
+        )
         print(
-            f"Exported to results/{prefix}_jobs.json and results/{prefix}_jobs.csv"
+            f"Exported to results/{prefix}_jobs.json, results/{prefix}_jobs.csv"
+            f" and results/{prefix}_jobs.html"
         )
 
 

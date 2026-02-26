@@ -11,7 +11,7 @@ This file helps AI agents (and humans) understand the codebase and where to make
 - **Normalize**: `src/normalize.py` – raw response → list of job dicts with consistent keys. When adding a new data source, either map its shape to the same keys here or add a source-specific normalizer and call it from `main.py`.
 - **Extract**: `src/extract.py` – one normalized job dict → extracted fields (location_type, position_type, minimum_salary, industry, job_spec_language, tech_stack, requirements, job_link, job_country). Add new extracted fields here and in `extract_job_info()`; extend `TECH_KEYWORDS` or pattern lists as needed.
 - **Filtering**: `src/filtering.py` – applies user-selected filters (location type, position type, minimum salary, industry, language) to the extracted jobs. Update this when changing filter semantics.
-- **Summary**: `src/summary.py` – builds human-readable summary per job and handles export (JSON/CSV). Add new output formats or summary sections here; update `build_summary()` and export helpers.
+- **Summary**: `src/summary.py` – builds human-readable summary per job and handles export (JSON/CSV/HTML). Add new output formats or summary sections here; update `build_summary()` and export helpers (`export_json`, `export_csv`, `export_html`).
 
 ## Conventions
 
@@ -29,7 +29,7 @@ This file helps AI agents (and humans) understand the codebase and where to make
 | New user preference or filter (e.g. salary min, remote-only) | `src/config.py` (and possibly `src/filtering.py` if it affects filtering, or `src/data_source.py` if it affects API params, or `src/cache.py` if it must be part of the cache key) |
 | New job data source (API or scraper) | `src/data_source.py`; keep saving raw response under `debug/api-response/` with timestamp; add caching strategy in `src/cache.py` if needed |
 | New field to extract (e.g. benefits, posted date) | `src/extract.py` (`extract_job_info`, `_raw` excluded from export), then `src/summary.py` (`build_summary`, export columns if CSV/JSON) |
-| New output format (e.g. Markdown export) | `src/summary.py` and `main.py` (always exports to `results/` with run timestamp) |
+| New output format (e.g. Markdown export) | `src/summary.py` (add an `export_*` function) and `main.py` (call it alongside `export_json`/`export_csv`/`export_html`; always exports to `results/` with run timestamp) |
 | New CLI flag or non-interactive mode | `main.py` (arg parsing / control flow), `src/config.py` if parsing from YAML or adding new preference fields |
 | Change in JSearch API params or response shape | `src/data_source.py` (request), `src/normalize.py` (keys from response), `src/cache.py` (if cache keys or TTL must change) |
 | Change `date_posted` values or add new posting-date options | `src/config.py` (`DATE_POSTED_CHOICES`, `collect_preferences`, `load_preferences_from_yaml`), `src/data_source.py` (API param), `src/cache.py` (cache key), `config.yaml` (default value) |

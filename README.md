@@ -1,6 +1,6 @@
 # Job Hunter Agent
 
-A Python CLI that searches job boards via the JSearch API, extracts key job fields, and prints tailored summaries. You can optionally export results to JSON or CSV.
+A Python CLI that searches job boards via the JSearch API, extracts key job fields, and prints tailored summaries. You can optionally export results to JSON, CSV, or HTML (browser-viewable).
 
 ## Workflow
 
@@ -13,7 +13,7 @@ A Python CLI that searches job boards via the JSearch API, extracts key job fiel
 2. **Data source & caching** – If `RAPID_API_KEY` is set in `.env`, the app calls the JSearch RapidAPI using your role, location, and posting-date filter (with basic country inference for cities like London, Barcelona, Madrid). Otherwise it loads the mock response from `docs/RapidAPIResponse.txt` (Python-style or JSON). Raw responses are cached on disk per `(role, location, date_posted)` for **60 minutes**, so repeated runs with the same parameters reuse the cached data instead of calling the API again.
 3. **Debug save** – The raw API/mock response for the current run is saved under `debug/api-response/` with a timestamped filename (e.g. `YYYYMMDD_HHMMSS_response.json`).
 4. **Extraction** – For each job the app derives: location type (on-site/hybrid/remote), position type (permanent/contract/freelance), minimum salary, industry, job ad language, tech stack, requirements, and job link.
-5. **Filtering & summary** – The extracted jobs are filtered according to your chosen filters. A short summary per remaining job is printed to the console. Results are always exported to the `results/` folder using the same timestamp as the debug file (e.g. `results/YYYYMMDD_HHMMSS_jobs.json` and `results/YYYYMMDD_HHMMSS_jobs.csv`), so you can match them to the raw response in `debug/api-response/`.
+5. **Filtering & summary** – The extracted jobs are filtered according to your chosen filters. A short summary per remaining job is printed to the console. Results are always exported to the `results/` folder using the same timestamp as the debug file (e.g. `results/YYYYMMDD_HHMMSS_jobs.json`, `results/YYYYMMDD_HHMMSS_jobs.csv`, and `results/YYYYMMDD_HHMMSS_jobs.html`), so you can match them to the raw response in `debug/api-response/`. The HTML file is self-contained (no external dependencies) and can be opened directly in any browser for an easy-to-read, card-based view of the results.
 
 ## Setup
 
@@ -83,11 +83,11 @@ The merged results are cached as a single entry keyed by `(role, location, sorte
 | `src/normalize.py` | Converts raw response into a list of normalized job dicts. |
 | `src/extract.py` | Extracts location type, position type, salary, industry, language, tech stack, requirements, job link, and `job_country`. |
 | `src/filtering.py` | Applies user-selected filters (location type, position type, minimum salary, industry, language) to the extracted jobs. |
-| `src/summary.py` | Builds per-job summary text and export (JSON/CSV). |
+| `src/summary.py` | Builds per-job summary text and exports (JSON, CSV, HTML). |
 | `docs/RapidAPIResponse.txt` | Mock JSearch response (used when no API key). |
 | `debug/api-response/` | Timestamped raw API responses (`YYYYMMDD_HHMMSS_response.json`). |
 | `debug/cache/` | Cache files storing raw responses per `(role, location[_countries], date_posted)`. |
-| `results/` | Timestamped exports (`YYYYMMDD_HHMMSS_jobs.json`, `YYYYMMDD_HHMMSS_jobs.csv`); same timestamp as the debug file for the same run. |
+| `results/` | Timestamped exports (`YYYYMMDD_HHMMSS_jobs.json`, `YYYYMMDD_HHMMSS_jobs.csv`, `YYYYMMDD_HHMMSS_jobs.html`); same timestamp as the debug file for the same run. |
 
 ## Environment
 
