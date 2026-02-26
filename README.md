@@ -1,6 +1,6 @@
 # Job Hunter Agent
 
-A Python CLI that searches job boards via the JSearch API (or a mock response), extracts key job fields, and prints tailored summaries. You can optionally export results to JSON or CSV.
+A Python CLI that searches job boards via the JSearch API, extracts key job fields, and prints tailored summaries. You can optionally export results to JSON or CSV.
 
 ## Workflow
 
@@ -95,8 +95,8 @@ The merged results are cached as a single entry keyed by `(role, location, sorte
 |----------|--------|
 | `RAPID_API_KEY` | JSearch API key (RapidAPI). If unset, mock file is used. |
 
-## Future features
-- Matching to my CV
+## Nice To Have Features
+- Matching job ad to a CV
 - Exclusions: companies blacklist
 
 ## Keeping this README updated

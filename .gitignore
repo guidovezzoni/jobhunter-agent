@@ -3,7 +3,4 @@ __pycache__
 debug/api-response/*
 debug/cache/*
 results/*
-
-# My custom files
-android*.yaml
-techlead*.yaml
+config/*

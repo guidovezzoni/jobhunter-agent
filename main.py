@@ -4,6 +4,7 @@ Job Hunter Agent: search jobs by role/location, extract key info, and show tailo
 """
 
 import argparse
+import re
 import sys
 from pathlib import Path
 
@@ -16,6 +17,20 @@ from src.normalize import normalize_response
 from src.extract import extract_all
 from src.summary import print_summaries, export_json, export_csv
 from src.filtering import filter_jobs
+
+
+def _slug(s: str) -> str:
+    """Sanitise a string for use as a filename segment.
+
+    Lowercases, replaces any character that is not alphanumeric or underscore
+    with '_' (covers all chars forbidden on Linux/Windows: / \\ : * ? " < > |
+    and control characters), collapses consecutive underscores, and strips
+    leading/trailing underscores.
+    """
+    s = s.strip().lower() or "any"
+    s = re.sub(r"[^\w]", "_", s)
+    s = re.sub(r"_+", "_", s)
+    return s.strip("_") or "any"
 
 
 def main() -> None:
@@ -91,10 +106,12 @@ def main() -> None:
     if filtered:
         results_dir = Path("results")
         results_dir.mkdir(parents=True, exist_ok=True)
-        export_json(filtered, results_dir / f"{timestamp}_jobs.json")
-        export_csv(filtered, results_dir / f"{timestamp}_jobs.csv")
+        location_slug = "europe" if prefs.europe_countries else _slug(prefs.location or "any")
+        prefix = f"{_slug(prefs.role)}-{location_slug}-{_slug(prefs.date_posted)}-{timestamp}"
+        export_json(filtered, results_dir / f"{prefix}_jobs.json")
+        export_csv(filtered, results_dir / f"{prefix}_jobs.csv")
         print(
-            f"Exported to results/{timestamp}_jobs.json and results/{timestamp}_jobs.csv"
+            f"Exported to results/{prefix}_jobs.json and results/{prefix}_jobs.csv"
         )
 
 
