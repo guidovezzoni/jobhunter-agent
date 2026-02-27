@@ -6,9 +6,9 @@
 - **Activation**: Controlled entirely by YAML and env vars:
   - `custom_message_enabled` – boolean toggle.
   - `custom_message_cv` – list of CV filenames under `doc/cv`.
-  - `custom_message_system_prompt` – optional override for the LLM system prompt.
-  - `custom_message_instructions` – optional override for the “instructions” section of the user prompt.
-  - `custom_message_max_jobs` – optional cap on how many jobs per search get a custom message.
+  - `custom_message_system_prompt` – required system prompt text (no code defaults).
+  - `custom_message_instructions` – required instructions text for the user prompt (no code defaults).
+  - `custom_message_max_jobs` – optional cap on how many jobs per search get a **fresh** custom message (cached messages are unlimited).
 - **Interactive mode**: **No additional prompts**. If the fields are configured in `config.yaml`, the feature runs; otherwise it is skipped. The CLI does not ask about any of these settings.
 - **Console output**: **Unchanged**. Custom messages are **not** printed in the console summaries, only in file exports.
 - **Caching**: Custom messages are cached per job and “profile” (CV + prompts). Cached messages are always reused when available (with a status flag), even when generation is disabled or unavailable, to minimise LLM usage.
@@ -40,6 +40,7 @@ Under the existing fields, add a commented section such as:
 - `custom_message_cv: []`  
   - List of filenames (strings) in `doc/cv` to use as CV sources.
   - Example:
+
     ```yaml
     custom_message_enabled: true
     custom_message_cv:
@@ -47,21 +48,23 @@ Under the existing fields, add a commented section such as:
       - "projects.md"
     ```
 
-- **Prompt customisation**
+- **Prompt customisation (required when enabled)**
 
-- `custom_message_system_prompt: ""` (optional)  
-  - If non-empty, overrides the default system prompt for the LLM.
-  - If missing or empty, a built-in default prompt is used.
+- `custom_message_system_prompt: ""`  
+  - Required when `custom_message_enabled: true`.
+  - Must contain the full system prompt text for the LLM.
+  - If `custom_message_enabled` is true and this field is missing or empty, the program should abort early with a clear error message instructing the user to populate it in `config.yaml`.
 
-- `custom_message_instructions: ""` (optional)  
-  - If non-empty, overrides the default “instructions” section of the user prompt (format, style, 3–5 lines, etc.).
-  - If missing or empty, a built-in default instructions block is used.
+- `custom_message_instructions: ""`  
+  - Required when `custom_message_enabled: true`.
+  - Must contain the full “instructions” section of the user prompt (format, style, 3–5 lines, etc.).
+  - If `custom_message_enabled` is true and this field is missing or empty, the program should abort early with a clear error message instructing the user to populate it in `config.yaml`.
 
 - **Usage cap**
 
 - `custom_message_max_jobs: 0` (optional)  
   - `0` or missing → no explicit cap (generate for all filtered jobs, subject to any internal safeguards).
-  - Positive integer `N` → generate custom messages only for the **first N filtered jobs** in that run.
+  - Positive integer `N` → generate custom messages only for the **first N filtered jobs** in that run (cached messages are not limited).
 
 These fields are **not** prompted for in interactive mode; they’re purely configuration-driven.
 
@@ -72,13 +75,13 @@ Extend the dataclass:
 - Existing fields stay as-is.
 - Add:
 
-  ```python
-  custom_message_enabled: bool = False
-  custom_message_cv: list[str] = field(default_factory=list)
-  custom_message_system_prompt: str | None = None
-  custom_message_instructions: str | None = None
-  custom_message_max_jobs: int | None = None
-  ```
+```python
+custom_message_enabled: bool = False
+custom_message_cv: list[str] = field(default_factory=list)
+custom_message_system_prompt: str | None = None
+custom_message_instructions: str | None = None
+custom_message_max_jobs: int | None = None
+```
 
 #### YAML loading (`load_preferences_from_yaml`)
 
@@ -94,8 +97,7 @@ Extend the dataclass:
 
 - Parse `custom_message_system_prompt` and `custom_message_instructions`:
 
-  - If key is missing → store `None`.
-  - If present and the string is empty/whitespace → store `None`.
+  - If key is missing or the string is empty/whitespace → store `None`.
   - Otherwise store the stripped string.
 
 - Parse `custom_message_max_jobs`:
@@ -105,6 +107,11 @@ Extend the dataclass:
   - If value is negative → treat as `None` (i.e. ignore).
   - If value is `0` → treat as “no explicit cap” (equivalent to `None`).
   - If value is positive → store the integer.
+
+- **Validation when `custom_message_enabled` is true** (later, e.g. in `main.py` or `attach_custom_messages`):
+
+  - Both `custom_message_system_prompt` and `custom_message_instructions` **must** be non-empty.
+  - If either is `None` or empty at that point, print a clear message (for example, “custom_message_enabled is true but custom_message_system_prompt/custom_message_instructions are not set in config.yaml”) and abort the run before calling the API or generating results.
 
 #### Interactive collection (`collect_preferences`)
 
@@ -137,45 +144,41 @@ Use `requests` (already in `requirements.txt`) and OpenRouter.
 
 - **Public function** (suggested signature):
 
-  ```python
-  def generate_custom_message(
-      job: dict[str, Any],
-      cv_text: str,
-      prefs: SearchPreferences,
-      max_lines: int = 5,
-  ) -> str | None:
-      ...
-  ```
+```python
+def generate_custom_message(
+    job: dict[str, Any],
+    cv_text: str,
+    prefs: SearchPreferences,
+    max_lines: int = 5,
+) -> str | None:
+    ...
+```
 
-  Responsibilities:
+Responsibilities:
 
-  - Build OpenRouter `messages` payload:
+- Build OpenRouter `messages` payload:
 
-    - **System message**:
+  - **System message**:
 
-      - Use `prefs.custom_message_system_prompt` if set; otherwise a default such as:
+    - Use `prefs.custom_message_system_prompt`. Configuration validation guarantees that when `custom_message_enabled` is true this field is non-empty; there are **no hard-coded defaults** in code.
 
-        > You are an assistant that writes short, highly tailored first-person notes explaining why the candidate is a strong fit for a specific job. Base your answer only on the candidate’s CV and the job description. Never invent skills or experience that are not in the CV.
+  - **User message** composed of three sections:
 
-    - **User message** composed of three sections:
+    1. **CV** – concatenated CV text.
+    2. **Job** – title, company, location, key requirements, and truncated job description.
+    3. **Instructions** – use `prefs.custom_message_instructions`. Configuration validation guarantees that when `custom_message_enabled` is true this field is non-empty; there are **no hard-coded defaults** in code.
 
-      1. **CV** – concatenated CV text.
-      2. **Job** – title, company, location, key requirements, and truncated job description.
-      3. **Instructions** – use `prefs.custom_message_instructions` if set, otherwise a default like:
+- Set conservative parameters:
 
-         > Write a short message (3–5 lines) in the first person explaining why I am a strong fit for this specific job. Focus only on experience and skills that appear in my CV and are relevant to this role. Do not include greetings, sign-offs, bullet points, or headings. Keep it concise and easy to paste into an application form.
+  - `temperature` around `0.5`.
+  - `max_tokens` tuned to keep the output roughly within 3–5 lines (e.g. 200–300 tokens).
 
-  - Set conservative parameters:
+- Perform HTTP POST to OpenRouter with auth headers.
 
-    - `temperature` around `0.5`.
-    - `max_tokens` tuned to keep the output roughly within 3–5 lines (e.g. 200–300 tokens).
+- On any error (missing API key, HTTP error, JSON parse error, etc.):
 
-  - Perform HTTP POST to OpenRouter with auth headers.
-
-  - On any error (missing API key, HTTP error, JSON parse error, etc.):
-
-    - Log/print a concise warning.
-    - Return `None` (do **not** crash the pipeline).
+  - Log/print a concise warning.
+  - Return `None` (do **not** crash the pipeline).
 
 ### CV loading helper
 
@@ -205,16 +208,16 @@ Either in `llm_client` or in a separate helper module:
 
 - **Profile key**: represent the current “profile” (CV + prompts) as a stable hash:
 
-  ```python
-  profile_input = (
-      cv_text
-      + "\n\n---SYSTEM---\n\n"
-      + effective_system_prompt
-      + "\n\n---INSTRUCTIONS---\n\n"
-      + effective_instructions
-  )
-  profile_key = sha256(profile_input.encode("utf-8")).hexdigest()
-  ```
+```python
+profile_input = (
+    cv_text
+    + "\n\n---SYSTEM---\n\n"
+    + effective_system_prompt
+    + "\n\n---INSTRUCTIONS---\n\n"
+    + effective_instructions
+)
+profile_key = sha256(profile_input.encode("utf-8")).hexdigest()
+```
 
 - **Job identifier**:
 
@@ -256,12 +259,12 @@ Either in `llm_client` or in a separate helper module:
 
 - Define a helper returning both a message and a status:
 
-  ```python
-  @dataclass
-  class CacheResult:
-      message: str | None
-      status: str  # "cached_same_profile" | "cached_inconsistent_profile" | "none"
-  ```
+```python
+@dataclass
+class CacheResult:
+    message: str | None
+    status: str  # "cached_same_profile" | "cached_inconsistent_profile" | "none"
+```
 
 - Lookup rules for a given `job_id` and current `profile_key`:
 
@@ -309,11 +312,19 @@ Behaviour:
 
 1. **Prepare run-level context**:
 
+   - If `not prefs.custom_message_enabled`:
+
+     - Do **not** attempt to call the LLM.
+     - Still load cached messages (see below) so that previously generated messages can be surfaced with appropriate status.
+
    - Load CV text via `load_cv_text(prefs.custom_message_cv)`:
 
-     - If no files are readable, remember this as a “no CV” condition.
+     - If no files are readable, remember this as a “no CV” condition (`cv_text` empty).
 
-   - Resolve effective prompts (system + instructions) using either YAML overrides or defaults.
+   - Resolve effective prompts (system + instructions) from `prefs`.
+
+     - When `custom_message_enabled` is true, validation before this step must ensure both fields are non-empty; otherwise the program should have aborted earlier.
+
    - Compute the `profile_key` from CV text + prompts.
    - Detect LLM availability (e.g. OpenRouter API key present) and store a boolean `llm_available`.
    - Compute the **fresh-call cap**:
@@ -417,21 +428,21 @@ Behaviour:
 
 - Import the new module:
 
-  ```python
-  from src.custom_message import attach_custom_messages
-  ```
+```python
+from src.custom_message import attach_custom_messages
+```
 
 - After filtering (i.e. after `filtered = filter_jobs(extracted, prefs)` and before printing summaries and exporting), insert:
 
-  ```python
-  if filtered:
-      attach_custom_messages(filtered, prefs)
-  ```
+```python
+if filtered:
+    attach_custom_messages(filtered, prefs)
+```
 
 - The rest of the logic stays the same:
 
   - Console uses `print_summaries(filtered)` – **no changes** to include the custom message.
-  - Exports use `filtered` with a possible `custom_message` key attached.
+  - Exports use `filtered` with possible `custom_message` and `custom_message_status` keys attached.
 
 ---
 
@@ -451,13 +462,13 @@ Behaviour:
 
 - Extend the `keys` list to include `custom_message` and `custom_message_status`:
 
-  ```python
-  keys = [
-      "role", "employer_name", "location", "location_type", "position_type",
-      "minimum_salary", "industry", "job_spec_language", "tech_stack",
-      "requirements", "job_link", "custom_message", "custom_message_status",
-  ]
-  ```
+```python
+keys = [
+    "role", "employer_name", "location", "location_type", "position_type",
+    "minimum_salary", "industry", "job_spec_language", "tech_stack",
+    "requirements", "job_link", "custom_message", "custom_message_status",
+]
+```
 
 - When building each row:
 
@@ -469,13 +480,13 @@ Behaviour:
 
 - For each job card, if `ex.get("custom_message")` is truthy, add a new section above the Apply button, e.g.:
 
-  ```html
-  <div class="custom-message">
-    <div class="custom-message-title">Custom message for this job</div>
-    <textarea class="custom-message-box" readonly>...message...</textarea>
-    <div class="custom-message-status">Status: fresh/cached/…</div>
-  </div>
-  ```
+```html
+<div class="custom-message">
+  <div class="custom-message-title">Custom message for this job</div>
+  <textarea class="custom-message-box" readonly>...message...</textarea>
+  <div class="custom-message-status">Status: fresh/cached/…</div>
+</div>
+```
 
 - Extend the `<style>` block with simple rules:
 
@@ -490,19 +501,22 @@ Behaviour:
 
 ## Prompting strategy and safety
 
-### Default prompts (overridable via YAML)
+### Prompts from `config.yaml` (no code defaults)
 
-- **Default system prompt** (used when `custom_message_system_prompt` is not set):
+- **System prompt**:
 
-  - Career-coach style, instructing honesty, short first-person messages, no fabrication.
+  - Defined entirely in `custom_message_system_prompt` in `config.yaml`.
+  - There are **no hard-coded defaults** in code; if the feature is enabled and this field is missing/empty, the run should abort early with a clear message.
 
-- **Default instructions** (used when `custom_message_instructions` is not set):
+- **Instructions**:
 
-  - 3–5 lines.
-  - First person singular.
-  - No greeting/sign-off.
-  - Focus only on CV-backed, job-relevant experience and skills.
-  - Plain text, no bullets or markdown.
+  - Defined entirely in `custom_message_instructions` in `config.yaml`.
+  - There are **no hard-coded defaults** in code; if the feature is enabled and this field is missing/empty, the run should abort early with a clear message.
+
+- Recommended content (to document in README, not as code defaults):
+
+  - System prompt: career-coach style, instructing honesty, short first-person messages, no fabrication.
+  - Instructions: 3–5 lines, first person, no greeting/sign-off, only CV-backed, job-relevant experience and skills, plain text, no bullets or markdown.
 
 Users can refine both via YAML without touching the code.
 
@@ -550,7 +564,7 @@ Users can refine both via YAML without touching the code.
 
     - `SearchPreferences` new fields in `src/config.py`.
     - `src/llm_client.py` for OpenRouter integration.
-    - `src/custom_message.py` for attaching messages.
+    - `src/custom_message.py` for attaching messages and handling cache lookup.
     - Changes in `src/summary.py` (CSV, HTML) and `main.py`.
 
 - **config.yaml comments**
@@ -559,6 +573,6 @@ Users can refine both via YAML without touching the code.
 
     - How to enable the feature.
     - How to specify CV files.
-    - How to customise prompts.
+    - How to provide system prompt and instructions (no code defaults).
     - How to limit the number of jobs per run.
 
