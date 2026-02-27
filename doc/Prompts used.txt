@@ -128,3 +128,32 @@ Finally, update README.md and AGENTS.md accordingly.
 
 ---
 
+I would like now to add a new feature: for each specific result I would like to get an LLM to write a 3 to 5 lines description of why I am the right candidate for that job.
+That should be based on my CV and the job description.
+config.yaml should have additional fields:
+- custom_message_enabled: a boolean field that enables or disable the feature
+- custom_message_cv: a list of files inside the `doc/cv` folder to be used by the LLM for creating the custom message
+
+The custom message should be added to the output, so the user can copy and paste it during the application.
+
+Could you please suggest a plan for this feature and recommend how the LLM interaction should be implemented? I don't have much experience about the details of that.
+
+
+
+--
+
+given the current plan outlined, do you think it would make sense to implement a sort of caching for the custom message so that if the same job comes out in different searches or subsequent searches, LLM is not involved because we already have a custom message and it would reduce the API usage.
+How would you implement this?
+
+-
+
+Sounds good, but I also would like to differentiate if the job_id changed or the profile_key changed:
+- if the job_id changed then the cache doesn't make any sense any more
+- however if the profile_key changed, the custom message could still make sense and can be re-used, at user discretion.
+
+So in general I would like that:
+- Custom message should always be present in the output, together with a flag that tells the user if it was cached or freshly generated
+- A cached custom message should always be shown if present, even if custom message generation is disabled, or there was a connection error, or the job was past the custom_message_max_jobs defined earlier, or anything else. If a cache is present it should always be shown with its cached flag
+- if we have a custom message for a specific job_id and the profile_key doesn't match, then I would like the custom message to be shown anyway, but in this case it should have a flag like "inconsistent cache"
+
+
