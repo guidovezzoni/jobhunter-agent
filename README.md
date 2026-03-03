@@ -1,20 +1,9 @@
 # Job Hunter Agent
 
-A Python CLI that searches job boards via the JSearch API, extracts key job fields, and prints tailored summaries. Exports to JSON, CSV, or HTML (browser-viewable) are controlled by the `output` setting in your YAML config.
+A Python CLI that searches job boards via the JSearch API, extracts key job fields, and prints tailored summaries. Reports exported to JSON, CSV, or HTML.
 
-## Workflow
+Can run either in interactive mode or by tailoring a copy of the `config.yaml` file - this is the recommended way as it has more parameters.
 
-1. **Preferences & filters** – On launch you can either:
-   - Run **interactively** and are prompted for:
-     - **Role** and **Location**, used to query jobs. Enter `europe`, `eu`, or `european economic area` to search across multiple European countries (see below).
-     - **Posting date** (`today` / `week` / `month` / `all`) – sent directly to the API to limit results to jobs posted within that window.
-     - Optional **filters** applied afterwards: location type(s) (`on-site`, `hybrid`, `remote`), position type(s) (`permanent`, `contract`, `freelance`), minimum salary, industry text, and job spec language (`en`, `any`, or another language code).
-     - **Defaults for every prompt are sourced from `config.yaml`** (if it exists in the project root). Press Enter at any prompt to accept the current default. To change the defaults permanently, edit `config.yaml`.
-   - Or run **non-interactively** by passing a YAML config file with all of the above fields.
-2. **Data source & caching** – If `RAPID_API_KEY` is set in `.env`, the app calls the JSearch RapidAPI using your role, location, and posting-date filter (with basic country inference for cities like London, Barcelona, Madrid). Otherwise it loads the mock response from `docs/RapidAPIResponse.txt` (Python-style or JSON). Raw responses are cached on disk per `(role, location, date_posted)` for **60 minutes**, so repeated runs with the same parameters reuse the cached data instead of calling the API again.
-3. **Debug save** – The raw API/mock response for the current run is saved under `debug/api-response/` with a timestamped filename (e.g. `YYYYMMDD_HHMMSS_response.json`).
-4. **Extraction** – For each job the app derives: location type (on-site/hybrid/remote), position type (permanent/contract/freelance), minimum salary, industry, job ad language, tech stack, requirements, and job link.
-5. **Filtering & summary** – The extracted jobs are filtered according to your chosen filters. A short summary per remaining job is printed to the console. Results are exported to the `results/` folder using the same timestamp as the debug file (e.g. `results/YYYYMMDD_HHMMSS_jobs.json`, `results/YYYYMMDD_HHMMSS_jobs.csv`, and `results/YYYYMMDD_HHMMSS_jobs.html` when enabled via `output`), so you can match them to the raw response in `debug/api-response/`. The HTML file is self-contained (no external dependencies) and can be opened directly in any browser for an easy-to-read, card-based view of the results. Launch modes in `output` (e.g. `HTML_LAUNCH`, `CSV_LAUNCH`, `JSON_LAUNCH`) will also open the corresponding file automatically after export.
 
 ## Setup
 
@@ -73,6 +62,20 @@ europe_countries: [gb, es, pt, de, nl]
 
 The merged results are cached as a single entry keyed by `(role, location, sorted_country_codes, date_posted)`. Changing the country list automatically busts the cache.
 
+## Workflow
+
+1. **Preferences & filters** – On launch you can either:
+   - Run **interactively** and are prompted for:
+     - **Role** and **Location**, used to query jobs. Enter `europe`, `eu`, or `european economic area` to search across multiple European countries (see below).
+     - **Posting date** (`today` / `week` / `month` / `all`) – sent directly to the API to limit results to jobs posted within that window.
+     - Optional **filters** applied afterwards: location type(s) (`on-site`, `hybrid`, `remote`), position type(s) (`permanent`, `contract`, `freelance`), minimum salary, industry text, and job spec language (`en`, `any`, or another language code).
+     - **Defaults for every prompt are sourced from `config.yaml`** (if it exists in the project root). Press Enter at any prompt to accept the current default. To change the defaults permanently, edit `config.yaml`.
+   - Or run **non-interactively** by passing a YAML config file with all of the above fields.
+2. **Data source & caching** – If `RAPID_API_KEY` is set in `.env`, the app calls the JSearch RapidAPI using your role, location, and posting-date filter (with basic country inference for cities like London, Barcelona, Madrid). Otherwise it loads the mock response from `docs/RapidAPIResponse.txt` (Python-style or JSON). Raw responses are cached on disk per `(role, location, date_posted)` for **60 minutes**, so repeated runs with the same parameters reuse the cached data instead of calling the API again.
+3. **Debug save** – The raw API/mock response for the current run is saved under `debug/api-response/` with a timestamped filename (e.g. `YYYYMMDD_HHMMSS_response.json`).
+4. **Extraction** – For each job the app derives: location type (on-site/hybrid/remote), position type (permanent/contract/freelance), minimum salary, industry, job ad language, tech stack, requirements, and job link.
+5. **Filtering & summary** – The extracted jobs are filtered according to your chosen filters. A short summary per remaining job is printed to the console. Results are exported to the `results/` folder using the same timestamp as the debug file (e.g. `results/YYYYMMDD_HHMMSS_jobs.json`, `results/YYYYMMDD_HHMMSS_jobs.csv`, and `results/YYYYMMDD_HHMMSS_jobs.html` when enabled via `output`), so you can match them to the raw response in `debug/api-response/`. The HTML file is self-contained (no external dependencies) and can be opened directly in any browser for an easy-to-read, card-based view of the results. Launch modes in `output` (e.g. `HTML_LAUNCH`, `CSV_LAUNCH`, `JSON_LAUNCH`) will also open the corresponding file automatically after export.
+
 ## Project structure
 
 | Path | Purpose |
@@ -99,6 +102,7 @@ The merged results are cached as a single entry keyed by `(role, location, sorte
 ## Nice To Have Features
 - Matching job ad to a CV
 - Exclusions: companies blacklist
+- Keywords filtering or sorting
 
 ## Keeping this README updated
 
