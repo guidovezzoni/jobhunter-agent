@@ -17,6 +17,10 @@
 #   minimum_salary   : Optional integer minimum salary; null = no filter.
 #   industry_filter  : Optional free-text industry filter; null = no filter.
 #   language_filter  : Job spec language (e.g. "en", "any").
+#   keywords         : Optional list or string; when non-empty, only jobs whose
+#                      specs contain at least one of these keywords as a whole
+#                      word (case-insensitive) are kept. This is configured via
+#                      YAML only; interactive runs reuse the same value.
 #   europe_countries : List of ISO 3166-1 alpha-2 country codes used when
 #                      location is a Europe trigger. Each code causes one
 #                      additional API call (pages × countries API requests
@@ -105,6 +109,13 @@ industry_filter: null
 
 # "en" = English only, "any" = no language filtering, or any language code.
 language_filter: "en"
+
+# Optional keyword-based filter over the job spec text. When this list is
+# empty or omitted, no keyword filtering is applied.
+# Examples:
+# keywords: ["android", "kotlin", "compose"]
+# keywords: "android"  # single keyword as a string
+keywords: []
 
 # Export modes: which result files to generate and whether to auto-open them.
 # The defaults for your runs are whatever you configure here; if this list

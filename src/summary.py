@@ -3,8 +3,9 @@
 import csv
 import html as _html_module
 import json
+import re
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterable
 
 
 def build_summary(extracted: dict[str, Any], index: int) -> str:
@@ -47,11 +48,66 @@ def print_summaries(extracted_list: list[dict[str, Any]]) -> None:
         print(build_summary(ex, i))
 
 
-def export_json(extracted_list: list[dict[str, Any]], path: Path) -> None:
-    """Export extracted job list to JSON (without _raw if present for brevity)."""
-    out = []
+def export_json(
+    extracted_list: list[dict[str, Any]],
+    path: Path,
+    prefs: Any | None = None,
+) -> None:
+    """
+    Export extracted job list to JSON (without _raw if present for brevity).
+
+    When prefs.keywords is configured, each job includes a `matched_keywords`
+    field listing which (normalised) keywords were found in its spec text.
+    """
+
+    def _normalised_keywords(prefs_obj: Any) -> list[str]:
+        raw = getattr(prefs_obj, "keywords", None) if prefs_obj is not None else None
+        if not raw:
+            return []
+        seen: set[str] = set()
+        out: list[str] = []
+        for item in raw:
+            if not isinstance(item, str):
+                continue
+            s = item.strip().lower()
+            if not s or s in seen:
+                continue
+            seen.add(s)
+            out.append(s)
+        return out
+
+    def _matched_keywords(job: dict[str, Any], keywords: list[str]) -> list[str]:
+        """
+        Return the subset of keywords that appear as whole words in the job's
+        spec text (case-insensitive).
+        """
+        if not keywords:
+            return []
+        parts: list[str] = []
+        for key in ("requirements", "tech_stack", "summary", "title", "company"):
+            value = job.get(key)
+            if isinstance(value, str) and value.strip():
+                parts.append(value)
+            elif isinstance(value, list):
+                parts.extend(str(item) for item in value if str(item).strip())
+        blob = " ".join(parts).lower()
+        if not blob:
+            return []
+        tokens = re.findall(r"\w+", blob)
+        token_set = set(tokens)
+        found: list[str] = []
+        for kw in keywords:
+            if kw and kw in token_set:
+                found.append(kw)
+        return found
+
+    norm_keywords = _normalised_keywords(prefs)
+
+    out: list[dict[str, Any]] = []
     for ex in extracted_list:
         d = {k: v for k, v in ex.items() if k != "_raw"}
+        if norm_keywords:
+            d["matched_keywords"] = _matched_keywords(d, norm_keywords)
         out.append(d)
     path.parent.mkdir(parents=True, exist_ok=True)
     with open(path, "w", encoding="utf-8") as f:
@@ -90,9 +146,64 @@ def export_html(
     def esc(value: object) -> str:
         return _html_module.escape(str(value)) if value is not None else ""
 
+    def _normalised_keywords(prefs_obj: Any) -> list[str]:
+        """
+        Return a normalised list of keywords from preferences:
+        stripped, lowercased, deduplicated, empty when none.
+        """
+        raw: Iterable[str] | None = getattr(prefs_obj, "keywords", None) if prefs_obj else None
+        if not raw:
+            return []
+        seen: set[str] = set()
+        out: list[str] = []
+        for item in raw:
+            if not isinstance(item, str):
+                continue
+            s = item.strip().lower()
+            if not s or s in seen:
+                continue
+            seen.add(s)
+            out.append(s)
+        return out
+
+    def _highlight_text(text: str, keywords: list[str]) -> str:
+        """
+        Wrap matched keywords in <mark>…</mark> for HTML display.
+
+        Matching is case-insensitive and treats keywords as whole words.
+        When no keywords are provided, the text is only HTML-escaped.
+        """
+        if not text:
+            return ""
+        if not keywords:
+            return esc(text)
+
+        kw_set = {k for k in keywords if k}
+        if not kw_set:
+            return esc(text)
+
+        # Walk the original text, escaping non-matching segments and wrapping
+        # matching word tokens in <mark> tags.
+        result_parts: list[str] = []
+        last_index = 0
+        for match in re.finditer(r"\b(\w+)\b", text):
+            start, end = match.span()
+            word = match.group(1)
+            result_parts.append(esc(text[last_index:start]))
+            if word.lower() in kw_set:
+                result_parts.append(f"<mark>{esc(text[start:end])}</mark>")
+            else:
+                result_parts.append(esc(text[start:end]))
+            last_index = end
+        result_parts.append(esc(text[last_index:]))
+        return "".join(result_parts)
+
     # Build search criteria rows (only show fields that were actually set)
     role = (prefs.role if prefs else "") or ""
     location = (prefs.location if prefs else "") or "any"
+
+    # Normalised keywords from preferences (if any)
+    norm_keywords = _normalised_keywords(prefs)
 
     criteria_rows = f'<tr><th>Role</th><td>{esc(role) or "N/A"}</td></tr>'
     criteria_rows += f'<tr><th>Location</th><td>{esc(location)}</td></tr>'
@@ -113,6 +224,8 @@ def export_html(
             criteria_rows += f'<tr><th>Industry</th><td>{esc(prefs.industry_filter)}</td></tr>'
         if prefs.language_filter and prefs.language_filter != "any":
             criteria_rows += f'<tr><th>Job ad language</th><td>{esc(prefs.language_filter)}</td></tr>'
+        if norm_keywords:
+            criteria_rows += f'<tr><th>Keywords</th><td>{esc(", ".join(norm_keywords))}</td></tr>'
 
     cards_html = ""
     for i, ex in enumerate(extracted_list):
@@ -143,9 +256,10 @@ def export_html(
             else ""
         )
 
+        # Requirements with keyword highlighting
         reqs = ex.get("requirements") or []
         req_items = "".join(
-            f"<li>{esc(r[:200])}{'…' if len(r) > 200 else ''}</li>"
+            f"<li>{_highlight_text(r[:200] + ('…' if len(r) > 200 else ''), norm_keywords)}</li>"
             for r in reqs[:8]
         )
         req_block = (

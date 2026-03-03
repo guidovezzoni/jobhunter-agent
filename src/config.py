@@ -48,6 +48,12 @@ class SearchPreferences:
     industry_filter: Optional[str]
     language_filter: str  # e.g. "en" or "any"
 
+    # Optional keyword-based filter applied to the job spec text. When this list
+    # is empty, no keyword filtering is applied. This is configured via YAML
+    # only (there is no interactive prompt) and reused as-is in interactive
+    # runs when defaults are loaded from config.yaml.
+    keywords: List[str] = field(default_factory=list)
+
     # Output formats to generate and optionally auto-launch.
     # Valid values (case-insensitive in YAML, stored uppercase) are:
     # CSV, JSON, HTML, CSV_LAUNCH, JSON_LAUNCH, HTML_LAUNCH.
@@ -175,6 +181,8 @@ def collect_preferences(defaults: Optional["SearchPreferences"] = None) -> "Sear
         list(defaults.europe_countries) if defaults is not None else list(DEFAULT_EUROPE_COUNTRIES)
     )
     default_output: list[str] = list(defaults.output) if defaults is not None else []
+    # Keywords are configured via YAML only; there is no interactive prompt.
+    default_keywords: list[str] = list(defaults.keywords) if defaults is not None else []
 
     # Core search parameters
     role_input = input(f"Role [{default_role}]: ").strip() or default_role
@@ -267,6 +275,7 @@ def collect_preferences(defaults: Optional["SearchPreferences"] = None) -> "Sear
         language_filter=language_filter,
         europe_countries=europe_countries,
         output=default_output,
+        keywords=default_keywords,
     )
 
 
@@ -327,6 +336,29 @@ def load_preferences_from_yaml(path: str | Path) -> SearchPreferences:
     else:
         language_filter = str(lang_raw).strip().lower()
 
+    # Keyword-based filter: normalise to a list of non-empty strings. Accept a
+    # single string or a sequence of strings. Case normalisation is left to the
+    # filtering layer; here we only strip whitespace and drop empty entries.
+    keywords_raw = data.get("keywords")
+    if keywords_raw is None:
+        keywords: list[str] = []
+    elif isinstance(keywords_raw, str):
+        kw = keywords_raw.strip()
+        keywords = [kw] if kw else []
+    else:
+        try:
+            candidates = list(keywords_raw)
+        except TypeError:
+            keywords = []
+        else:
+            keywords = []
+            for item in candidates:
+                if not isinstance(item, str):
+                    continue
+                s = item.strip()
+                if s:
+                    keywords.append(s)
+
     output_raw = data.get("output")
     if output_raw is None:
         # No default at code level: when this ends up empty the application
@@ -360,4 +392,5 @@ def load_preferences_from_yaml(path: str | Path) -> SearchPreferences:
         language_filter=language_filter,
         europe_countries=europe_countries,
         output=output,
+        keywords=keywords,
     )
