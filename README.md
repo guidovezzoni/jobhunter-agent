@@ -68,9 +68,9 @@ The merged results are cached as a single entry keyed by `(role, location, sorte
    - Run **interactively** and are prompted for:
      - **Role** and **Location**, used to query jobs. Enter `europe`, `eu`, or `european economic area` to search across multiple European countries (see below).
      - **Posting date** (`today` / `week` / `month` / `all`) – sent directly to the API to limit results to jobs posted within that window.
-     - Optional **filters** applied afterwards: location type(s) (`on-site`, `hybrid`, `remote`), position type(s) (`permanent`, `contract`, `freelance`), minimum salary, industry text, and job spec language (`en`, `any`, or another language code).
-     - **Defaults for every prompt are sourced from `config.yaml`** (if it exists in the project root). Press Enter at any prompt to accept the current default. To change the defaults permanently, edit `config.yaml`.
-   - Or run **non-interactively** by passing a YAML config file with all of the above fields.
+     - Optional **filters** applied afterwards: location type(s) (`on-site`, `hybrid`, `remote`), position type(s) (`permanent`, `contract`, `freelance`), minimum salary, industry text, job spec language (`en`, `any`, or another language code), and an optional **keyword-based filter** configured in YAML.
+     - **Defaults for every prompt are sourced from `config.yaml`** (if it exists in the project root). Press Enter at any prompt to accept the current default. To change the defaults permanently, edit `config.yaml`. Keyword-based filtering is configured via YAML only and is reused as-is when running interactively.
+   - Or run **non-interactively** by passing a YAML config file with all of the above fields (including optional `keywords` for keyword-based filtering of job specs).
 2. **Data source & caching** – If `RAPID_API_KEY` is set in `.env`, the app calls the JSearch RapidAPI using your role, location, and posting-date filter (with basic country inference for cities like London, Barcelona, Madrid). Otherwise it loads the mock response from `docs/RapidAPIResponse.txt` (Python-style or JSON). Raw responses are cached on disk per `(role, location, date_posted)` for **60 minutes**, so repeated runs with the same parameters reuse the cached data instead of calling the API again.
 3. **Debug save** – The raw API/mock response for the current run is saved under `debug/api-response/` with a timestamped filename (e.g. `YYYYMMDD_HHMMSS_response.json`).
 4. **Extraction** – For each job the app derives: location type (on-site/hybrid/remote), position type (permanent/contract/freelance), minimum salary, industry, job ad language, tech stack, requirements, and job link.
@@ -81,13 +81,13 @@ The merged results are cached as a single entry keyed by `(role, location, sorte
 | Path | Purpose |
 |------|--------|
 | `main.py` | Entry point: parses CLI args (including optional `--config`), collects preferences and filters (interactively or from YAML), fetches or reuses cached jobs, normalizes, extracts, filters, prints summaries, and exports results based on the configured `output` modes. |
-| `src/config.py` | Defines `SearchPreferences`, `EUROPE_LOCATION_TRIGGERS`, `DEFAULT_EUROPE_COUNTRIES`, `collect_preferences()` for role/location and all post-fetch filters, and `load_preferences_from_yaml()` for YAML-based configurations, plus the `output` configuration that controls which exports run and whether they auto-launch. |
+| `src/config.py` | Defines `SearchPreferences`, `EUROPE_LOCATION_TRIGGERS`, `DEFAULT_EUROPE_COUNTRIES`, `collect_preferences()` for role/location and all post-fetch filters (including the non-interactive-only `keywords` list), and `load_preferences_from_yaml()` for YAML-based configurations, plus the `output` configuration that controls which exports run and whether they auto-launch. |
 | `src/data_source.py` | Fetches from JSearch API or mock file. In multi-country mode calls `_fetch_jsearch_multi_country()` which loops over `europe_countries`, merges and deduplicates results. Applies basic country inference for single-location searches. Saves raw response to `debug/api-response/`. |
 | `src/cache.py` | Simple file-based cache of raw API/mock responses keyed by `(role, location, date_posted)` (plus sorted country codes in multi-country mode) with a 60-minute TTL. |
 | `src/normalize.py` | Converts raw response into a list of normalized job dicts. |
 | `src/extract.py` | Extracts location type, position type, salary, industry, language, tech stack, requirements, job link, and `job_country`. |
-| `src/filtering.py` | Applies user-selected filters (location type, position type, minimum salary, industry, language) to the extracted jobs. |
-| `src/summary.py` | Builds per-job summary text and exports (JSON, CSV, HTML); the export helpers are called conditionally based on the `output` modes. |
+| `src/filtering.py` | Applies user-selected filters (location type, position type, minimum salary, industry, language, and optional keyword-based filtering) to the extracted jobs. |
+| `src/summary.py` | Builds per-job summary text and exports (JSON, CSV, HTML); the export helpers are called conditionally based on the `output` modes. When keywords are configured, JSON includes a `matched_keywords` field per job and HTML highlights matched keywords in the requirements list. |
 | `docs/RapidAPIResponse.txt` | Mock JSearch response (used when no API key). |
 | `debug/api-response/` | Timestamped raw API responses (`YYYYMMDD_HHMMSS_response.json`). |
 | `debug/cache/` | Cache files storing raw responses per `(role, location[_countries], date_posted)`. |
@@ -102,7 +102,7 @@ The merged results are cached as a single entry keyed by `(role, location, sorte
 ## Nice To Have Features
 - Matching job ad to a CV
 - Exclusions: companies blacklist
-- Keywords filtering or sorting
+- Keywords sorting
 
 ## Keeping this README updated
 

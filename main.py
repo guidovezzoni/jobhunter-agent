@@ -190,7 +190,7 @@ def main() -> None:
         html_path = results_dir / f"{prefix}_jobs.html"
 
         if want_json:
-            export_json(filtered, json_path)
+            export_json(filtered, json_path, prefs=prefs)
             generated_exts.append("json")
         if want_csv:
             export_csv(filtered, csv_path)
