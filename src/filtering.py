@@ -22,6 +22,8 @@ def filter_jobs(extracted_jobs: list[dict[str, Any]], prefs: SearchPreferences) 
             continue
         if not _passes_language(job, prefs):
             continue
+        if not _passes_keywords(job, prefs):
+            continue
         filtered.append(job)
     return filtered
 
@@ -86,4 +88,53 @@ def _passes_language(job: dict[str, Any], prefs: SearchPreferences) -> bool:
     if not job_lang:
         return False
     return job_lang.startswith(lang_pref)
+
+
+def _passes_keywords(job: dict[str, Any], prefs: SearchPreferences) -> bool:
+    """
+    Keyword-based filter over the job specification text.
+
+    When prefs.keywords is empty, this filter is effectively disabled and all
+    jobs pass. Otherwise, a job is kept only when at least one configured
+    keyword appears as a whole word (case-insensitive) in the combined text of
+    selected fields.
+    """
+    if not getattr(prefs, "keywords", None):
+        return True
+
+    # Normalise the configured keywords: strip whitespace, lowercase, and drop
+    # empties and duplicates while preserving order.
+    seen: set[str] = set()
+    keywords: list[str] = []
+    for raw_kw in prefs.keywords:
+        if not isinstance(raw_kw, str):
+            continue
+        s = raw_kw.strip().lower()
+        if not s or s in seen:
+            continue
+        seen.add(s)
+        keywords.append(s)
+
+    if not keywords:
+        return True
+
+    # Build a searchable blob from relevant text fields.
+    parts: list[str] = []
+    for key in ("requirements", "tech_stack", "summary", "title", "company"):
+        value = job.get(key)
+        if isinstance(value, str) and value.strip():
+            parts.append(value)
+        elif isinstance(value, list):
+            parts.extend(str(item) for item in value if str(item).strip())
+    blob = " ".join(parts).lower()
+
+    if not blob:
+        return False
+
+    # Whole-word match: split on word characters and check membership.
+    import re
+
+    tokens = re.findall(r"\w+", blob)
+    token_set = set(tokens)
+    return any(kw in token_set for kw in keywords)
 
